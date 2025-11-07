@@ -1,0 +1,56 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Hymn {
+  id         String   @id @default(uuid())
+  title      String
+  tags       Tag[]
+  files      File[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Saying {
+  id          String   @id @default(uuid())
+  author      String
+  authorImage String?
+  source      String?
+  content     String
+  tags        Tag[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  hymns     Hymn[]
+  sayings   Saying[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model File {
+  id        String   @id @default(uuid())
+  hymn      Hymn     @relation(fields: [hymnId], references: [id])
+  hymnId    String
+  type      FileType
+  fileUrl   String
+  size      Int?
+  duration  Int?
+  createdAt DateTime @default(now())
+}
+
+enum FileType {
+  VIDEO_MONTAGE
+  VIDEO_POWERPOINT
+  POWERPOINT
+  MUSIC_AUDIO
+  WORD_DOCUMENT
+}
