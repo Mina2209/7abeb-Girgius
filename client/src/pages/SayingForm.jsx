@@ -108,7 +108,7 @@ const SayingForm = () => {
         await createSaying(sayingData);
       }
 
-      navigate('/fathers-quotes');
+      navigate('/sayings');
     } catch (error) {
       setError(error.message || 'حدث خطأ أثناء حفظ القول');
     } finally {
@@ -120,7 +120,7 @@ const SayingForm = () => {
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <button
-          onClick={() => navigate('/fathers-quotes')}
+          onClick={() => navigate('/sayings')}
           className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
         >
           <ArrowLeftIcon className="h-5 w-5 ml-2" />
@@ -270,7 +270,7 @@ const SayingForm = () => {
         <div className="flex justify-end space-x-3 space-x-reverse">
           <button
             type="button"
-            onClick={() => navigate('/fathers-quotes')}
+            onClick={() => navigate('/sayings')}
             className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
           >
             إلغاء

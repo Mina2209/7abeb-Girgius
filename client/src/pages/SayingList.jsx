@@ -7,7 +7,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Link } from "react-router-dom";
 
-const FathersQuotesPage = () => {
+const SayingList = () => {
   const navigate = useNavigate();
   const { sayings, loading, error, deleteSaying } = useSayings();
   const { tags } = useTags();
@@ -72,7 +72,7 @@ const FathersQuotesPage = () => {
           أقوال الآباء
         </h1>
         <Link
-          to="/fathers-quotes/new"
+          to="/sayings/new"
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 space-x-reverse transition-colors"
         >
           <PlusIcon className="h-5 w-5 ml-2" />
@@ -156,7 +156,7 @@ const FathersQuotesPage = () => {
                   </div>
                   <div className="flex space-x-2 space-x-reverse">
                     <Link
-                      to={`/fathers-quotes/${saying.id}/edit`}
+                      to={`/sayings/${saying.id}/edit`}
                       className="text-blue-600 hover:text-blue-800 p-1"
                     >
                       <PencilIcon className="h-5 w-5" />
@@ -228,4 +228,4 @@ const FathersQuotesPage = () => {
   );
 };
 
-export default FathersQuotesPage;
+export default SayingList;

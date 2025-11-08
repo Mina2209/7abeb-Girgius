@@ -16,7 +16,7 @@ import { FILE_TYPES, TYPE_PRIORITY } from "../constants/fileTypes";
 import { formatDuration, formatSize } from "../utils/formatters";
 import ConfirmDialog from "../components/ConfirmDialog";
 
-const HymnFilter = () => {
+const HymnList = () => {
   const { hymns, loading, error, deleteHymn } = useHymns();
   const { tags } = useTags();
 
@@ -425,4 +425,4 @@ const HymnFilter = () => {
   );
 };
 
-export default HymnFilter;
+export default HymnList;

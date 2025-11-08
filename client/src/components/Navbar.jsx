@@ -67,7 +67,7 @@ const Navbar = () => {
               </Link>
             </li>
             <li>
-              <Link to="/fathers-quotes" className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/fathers-quotes") ? "bg-blue-700/60" : ""}`}>
+              <Link to="/sayings" className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/sayings") ? "bg-blue-700/60" : ""}`}>
                 اقوال اباء
               </Link>
             </li>
@@ -185,9 +185,9 @@ const Navbar = () => {
             </li>
             <li>
               <Link
-                to="/fathers-quotes"
+                to="/sayings"
                 onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/fathers-quotes") ? "bg-blue-700/60" : ""}`}>
+                className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/sayings") ? "bg-blue-700/60" : ""}`}>
                 اقوال اباء
               </Link>
             </li>

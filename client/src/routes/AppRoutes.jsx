@@ -2,13 +2,13 @@ import { Routes, Route } from 'react-router-dom';
 
 import HomePage from '../pages/HomePage';
 import HymnForm from '../pages/HymnForm';
-import HymnFilter from '../pages/HymnFilter';
+import HymnList from '../pages/HymnList';
 import TagList from '../pages/TagList';
 import TagForm from '../pages/TagForm';
 import LiturgyPage from '../pages/LiturgyPage';
 import AgpeyaPage from '../pages/AgpeyaPage';
 import ReflectionsPage from '../pages/ReflectionsPage';
-import FathersQuotesPage from '../pages/FathersQuotesPage';
+import SayingList from '../pages/SayingList';
 import SayingForm from '../pages/SayingForm';
 import ImageLibraryPage from '../pages/ImageLibraryPage';
 import SermonsPage from '../pages/SermonsPage';
@@ -22,13 +22,13 @@ export default function AppRoutes() {
             <Route path="/liturgy" element={<LiturgyPage />} />
             <Route path="/agpeya" element={<AgpeyaPage />} />
             <Route path="/reflections" element={<ReflectionsPage />} />
-            <Route path="/fathers-quotes" element={<FathersQuotesPage />} />
+            <Route path="sayings" element={<SayingList />} />
             <Route path="/image-library" element={<ImageLibraryPage />} />
             <Route path="/sermons" element={<SermonsPage />} />
             <Route path="/programs" element={<ProgramsPage />} />
 
             {/* Hymns */}
-            <Route path="/hymns" element={<HymnFilter />} />
+            <Route path="/hymns" element={<HymnList />} />
             <Route path="/hymns/add" element={<HymnForm />} />
             <Route path="/hymns/edit/:id" element={<HymnForm />} />
 
@@ -38,8 +38,8 @@ export default function AppRoutes() {
             <Route path="/tags/edit/:id" element={<TagForm />} />
 
             {/* Sayings */}
-            <Route path="/fathers-quotes/new" element={<SayingForm />} />
-            <Route path="/fathers-quotes/:id/edit" element={<SayingForm />} />
+            <Route path="sayings/new" element={<SayingForm />} />
+            <Route path="sayings/:id/edit" element={<SayingForm />} />
         </Routes>
     );
 }
