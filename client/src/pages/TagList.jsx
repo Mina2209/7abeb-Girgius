@@ -1,24 +1,74 @@
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTags } from '../contexts/TagContext';
-import { TrashIcon, PencilIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PencilIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { normalizeArabic } from '../utils/normalizeArabic';
+import { useClickOutside } from '../hooks/useClickOutside';
+
+// Entity types that tags can be linked to
+const ENTITY_TYPES = [
+  { value: 'hymns', label: 'الترانيم' },
+  { value: 'sayings', label: 'الأقوال' },
+  // Future entity types can be added here:
+  // { value: 'sermons', label: 'الوعظ' },
+];
 
 const TagList = () => {
   const { tags, searchTerm, setSearchTerm, loading, error, deleteTag } = useTags();
   const [localSearch, setLocalSearch] = useState(searchTerm);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [selectedEntityTypes, setSelectedEntityTypes] = useState([]);
+  const [showEntityTypesDropdown, setShowEntityTypesDropdown] = useState(false);
+  const entityTypesRef = useRef(null);
+
+  // Close entity types dropdown on outside click
+  useClickOutside(entityTypesRef, () => setShowEntityTypesDropdown(false), showEntityTypesDropdown);
 
   // Compute filtered tags on the fly
-  const filteredTags = tags.filter(tag =>
-    normalizeArabic(tag.name).includes(normalizeArabic(localSearch))
-  );
+  const filteredTags = useMemo(() => {
+    return tags.filter(tag => {
+      // Search filter
+      const matchesSearch = normalizeArabic(tag.name).includes(normalizeArabic(localSearch));
+
+      // Entity types filter
+      const matchesEntityTypes = selectedEntityTypes.length === 0 || 
+        selectedEntityTypes.some(entityType => {
+          switch (entityType) {
+            case 'hymns':
+              return tag.hymns && tag.hymns.length > 0;
+            case 'sayings':
+              return tag.sayings && tag.sayings.length > 0;
+            // Future entity types can be added here:
+            // case 'sermons':
+            //   return tag.sermons && tag.sermons.length > 0;
+            default:
+              return false;
+          }
+        });
+
+      return matchesSearch && matchesEntityTypes;
+    });
+  }, [tags, localSearch, selectedEntityTypes]);
 
   const handleSearch = (e) => {
     const term = e.target.value;
     setLocalSearch(term);
     setSearchTerm(term);
+  };
+
+  const handleEntityTypeToggle = (entityType) => {
+    setSelectedEntityTypes(prev =>
+      prev.includes(entityType)
+        ? prev.filter(type => type !== entityType)
+        : [...prev, entityType]
+    );
+  };
+
+  const clearFilters = () => {
+    setLocalSearch('');
+    setSearchTerm('');
+    setSelectedEntityTypes([]);
   };
 
   const confirmDelete = (id) => setShowDeleteConfirm(id);
@@ -44,18 +94,69 @@ const TagList = () => {
         </Link>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+      {/* Filter Controls */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Search Input */}
+          <div className="relative">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="البحث في المواضيع..."
+              value={localSearch}
+              onChange={handleSearch}
+              className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Entity Types Dropdown */}
+          <div className="relative" ref={entityTypesRef}>
+            <button
+              onClick={() => setShowEntityTypesDropdown(!showEntityTypesDropdown)}
+              className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <span>المرتبطة بـ</span>
+              <ChevronDownIcon className="h-5 w-5" />
+            </button>
+            {showEntityTypesDropdown && (
+              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+                {ENTITY_TYPES.map((entityType) => (
+                  <label
+                    key={entityType.value}
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedEntityTypes.includes(entityType.value)}
+                      onChange={() => handleEntityTypeToggle(entityType.value)}
+                      className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700">
+                      {entityType.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <input
-          type="text"
-          placeholder="البحث في المواضيع..."
-          value={localSearch}
-          onChange={handleSearch}
-          className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-        />
+
+        {/* Clear Filters Button */}
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={clearFilters}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+          >
+            مسح جميع الفلاتر
+          </button>
+        </div>
+      </div>
+
+      {/* Results Count */}
+      <div className="text-sm text-gray-600">
+        عرض {filteredTags.length} من أصل {tags.length} موضوع
       </div>
 
       {/* Tags Grid */}
