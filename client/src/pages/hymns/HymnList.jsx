@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
-import { useHymns } from "../contexts/HymnContext";
-import { useTags } from "../contexts/TagContext";
+import { useHymns } from "../../contexts/HymnContext";
+import { useTags } from "../../contexts/TagContext";
 import {
   ChevronDownIcon,
   MagnifyingGlassIcon,
@@ -9,12 +9,12 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
-import { normalizeArabic } from "../utils/normalizeArabic";
-import { useClickOutside } from "../hooks/useClickOutside";
-import TagMultiSelect from "../components/TagMultiSelect";
-import { FILE_TYPES, TYPE_PRIORITY } from "../constants/fileTypes";
-import { formatDuration, formatSize } from "../utils/formatters";
-import ConfirmDialog from "../components/ConfirmDialog";
+import { normalizeArabic } from "../../utils/normalizeArabic";
+import { useClickOutside } from "../../hooks/useClickOutside";
+import TagMultiSelect from "../../components/TagMultiSelect";
+import { FILE_TYPES, TYPE_PRIORITY } from "../../constants/fileTypes";
+import { formatDuration, formatSize } from "../../utils/formatters";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const HymnList = () => {
   const { hymns, loading, error, deleteHymn } = useHymns();

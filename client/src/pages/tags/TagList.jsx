@@ -1,10 +1,10 @@
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useTags } from '../contexts/TagContext';
+import { useTags } from '../../contexts/TagContext';
 import { TrashIcon, PencilIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import ConfirmDialog from '../components/ConfirmDialog';
-import { normalizeArabic } from '../utils/normalizeArabic';
-import { useClickOutside } from '../hooks/useClickOutside';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import { normalizeArabic } from '../../utils/normalizeArabic';
+import { useClickOutside } from '../../hooks/useClickOutside';
 
 // Entity types that tags can be linked to
 const ENTITY_TYPES = [

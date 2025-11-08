@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSayings } from '../contexts/SayingContext';
-import { useTags } from '../contexts/TagContext';
-import TagMultiSelect from '../components/TagMultiSelect';
-import ConfirmDialog from '../components/ConfirmDialog';
+import { useSayings } from '../../contexts/SayingContext';
+import { useTags } from '../../contexts/TagContext';
+import TagMultiSelect from '../../components/TagMultiSelect';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Link } from "react-router-dom";
 

@@ -1,15 +1,15 @@
 import { Routes, Route } from 'react-router-dom';
 
-import HomePage from '../pages/HomePage';
-import HymnForm from '../pages/HymnForm';
-import HymnList from '../pages/HymnList';
-import TagList from '../pages/TagList';
-import TagForm from '../pages/TagForm';
+import HomePage from '../pages/home/HomePage';
+import HymnForm from '../pages/hymns/HymnForm';
+import HymnList from '../pages/hymns/HymnList';
+import TagList from '../pages/tags/TagList';
+import TagForm from '../pages/tags/TagForm';
 import LiturgyPage from '../pages/LiturgyPage';
 import AgpeyaPage from '../pages/AgpeyaPage';
 import ReflectionsPage from '../pages/ReflectionsPage';
-import SayingList from '../pages/SayingList';
-import SayingForm from '../pages/SayingForm';
+import SayingList from '../pages/sayings/SayingList';
+import SayingForm from '../pages/sayings/SayingForm';
 import ImageLibraryPage from '../pages/ImageLibraryPage';
 import SermonsPage from '../pages/SermonsPage';
 import ProgramsPage from '../pages/ProgramsPage';

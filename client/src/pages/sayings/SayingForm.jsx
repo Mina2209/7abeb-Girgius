@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSayings } from '../contexts/SayingContext';
-import { useTags } from '../contexts/TagContext';
+import { useSayings } from '../../contexts/SayingContext';
+import { useTags } from '../../contexts/TagContext';
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import TagMultiSelect from '../components/TagMultiSelect';
+import TagMultiSelect from '../../components/TagMultiSelect';
 
 const SayingForm = () => {
   const navigate = useNavigate();
