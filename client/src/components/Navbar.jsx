@@ -6,7 +6,13 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const isActive = (path) => {
-    return location.pathname === path;
+    // Exact match
+    if (location.pathname === path) {
+      return true;
+    }
+    // Check if pathname starts with the path followed by a slash (for sub-routes)
+    // This handles /hymns/add, /hymns/edit/:id, /tags/add, /tags/edit/:id, etc.
+    return location.pathname.startsWith(path + '/');
   };
 
   return (
