@@ -82,8 +82,20 @@ const TagList = () => {
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-64 text-xl text-gray-600">جاري التحميل...</div>;
-  if (error) return <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">خطأ: {error}</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        حدث خطأ: {error}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -162,12 +174,12 @@ const TagList = () => {
       {/* Tags Grid */}
       {filteredTags.length === 0 ? (
         <div className="text-center py-12 text-gray-500 text-lg">
-          {localSearch ? 'لا توجد نتائج للبحث' : 'لا توجد مواضيع'}
+          لا توجد نتائج للبحث
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTags.map(tag => (
-            <div key={tag.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
+            <div key={tag.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full">
               {/* Content wrapper that grows */}
               <div className="flex-1">
                 <div className="flex justify-between items-start mb-4">

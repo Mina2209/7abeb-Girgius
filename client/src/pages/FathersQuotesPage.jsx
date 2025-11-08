@@ -51,7 +51,7 @@ const FathersQuotesPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-64">
+      <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -59,8 +59,8 @@ const FathersQuotesPage = () => {
 
   if (error) {
     return (
-      <div className="text-center text-red-600 py-8">
-        <p>حدث خطأ في تحميل الأقوال: {error}</p>
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        حدث خطأ: {error}
       </div>
     );
   }
@@ -85,14 +85,16 @@ const FathersQuotesPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search Input */}
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
             <input
               type="text"
               id="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="القائل أو القول أو المصدر"
-              className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               dir="rtl"
             />
           </div>
@@ -127,8 +129,8 @@ const FathersQuotesPage = () => {
       {/* Sayings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredSayings.map((saying) => (
-          <div key={saying.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col h-full">
-            <div className="p-6 flex flex-col h-full">
+          <div key={saying.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full">
+            <div className="flex flex-col h-full">
               {/* Content wrapper that grows */}
               <div className="flex-1">
                 {/* Actions and Author Info */}
@@ -175,15 +177,20 @@ const FathersQuotesPage = () => {
 
                 {/* Tags */}
                 {saying.tags && saying.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {saying.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
+                  <div className="mb-4">
+                    <span className="text-sm font-medium text-gray-700">
+                      المواضيع:
+                    </span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {saying.tags.map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -202,27 +209,20 @@ const FathersQuotesPage = () => {
 
       {/* Empty State */}
       {filteredSayings.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-gray-400 text-6xl mb-4">📖</div>
-          <h3 className="text-xl font-medium text-gray-900 mb-2">
-            لا توجد أقوال مطابقة للبحث
-          </h3>
-          {/* <p className="text-gray-600">
-            جرب تغيير معايير البحث أو التصفية
-          </p> */}
+        <div className="text-center py-12 text-gray-500 text-lg">
+          لا توجد نتائج للبحث
         </div>
       )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        onConfirm={() => handleDelete(sayingToDelete?.id)}
         title="تأكيد الحذف"
-        message={`هل أنت متأكد من حذف قول "${sayingToDelete?.author}"؟`}
-        confirmText="حذف"
-        cancelText="إلغاء"
-        isDestructive={true}
+        message="هل أنت متأكد من أنك تريد حذف هذا القول؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف"
+        cancelLabel="إلغاء"
+        onConfirm={() => handleDelete(sayingToDelete?.id)}
+        onCancel={() => setShowDeleteDialog(false)}
       />
     </div>
   );

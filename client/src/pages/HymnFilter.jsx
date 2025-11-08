@@ -143,7 +143,7 @@ const HymnFilter = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-xl text-gray-600">جاري التحميل...</div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -151,7 +151,7 @@ const HymnFilter = () => {
   if (error) {
     return (
       <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        خطأ: {error}
+        حدث خطأ: {error}
       </div>
     );
   }
@@ -275,17 +275,15 @@ const HymnFilter = () => {
 
       {/* Hymns Grid */}
       {filteredHymns.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-gray-500 text-lg">
-            لا توجد نتائج تطابق الفلاتر المحددة
-          </div>
+        <div className="text-center py-12 text-gray-500 text-lg">
+          لا توجد نتائج للبحث
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredHymns.map((hymn) => (
             <div
               key={hymn.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow flex flex-col h-full"
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full"
             >
               {/* Content wrapper that grows */}
               <div className="flex-1">
