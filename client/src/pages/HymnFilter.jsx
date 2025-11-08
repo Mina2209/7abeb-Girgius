@@ -270,7 +270,7 @@ const HymnFilter = () => {
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        عرض {filteredHymns.length} من {hymns.length} ترنيمة
+        عرض {filteredHymns.length} من أصل {hymns.length} ترنيمة
       </div>
 
       {/* Hymns Grid */}
