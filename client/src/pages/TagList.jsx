@@ -90,7 +90,7 @@ const TagList = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">المواضيع</h1>
         <Link to="/tags/add" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 space-x-reverse transition-colors">
-          <PlusIcon className="h-5 w-5" /> <span>إضافة موضوع جديد</span>
+          <PlusIcon className="h-5 w-5 ml-2" /> <span>إضافة موضوع جديد</span>
         </Link>
       </div>
 
