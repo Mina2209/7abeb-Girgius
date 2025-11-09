@@ -1,13 +1,18 @@
 import express from 'express';
 import cors from "cors";
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 import hymnRoutes from './routes/hymn.routes.js';
 import tagRoutes from './routes/tag.routes.js';
 import sayingRoutes from './routes/saying.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
-import path from 'path';
 
 const app = express();
+
+// resolve __dirname for consistent uploads path resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(express.json());
 app.use(cors({
@@ -20,7 +25,8 @@ app.use('/api/sayings', sayingRoutes);
 app.use('/api/uploads', uploadRoutes);
 
 // serve uploaded files statically from configured UPLOADS_DIR or fallback
-const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'server', 'uploads');
+// Use __dirname so the path is correct regardless of process.cwd()
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsDir));
 
 const PORT = process.env.PORT || 4000;
