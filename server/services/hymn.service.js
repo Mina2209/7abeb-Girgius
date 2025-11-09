@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 const prisma = new PrismaClient();
 
 export const HymnService = {
@@ -60,8 +62,35 @@ export const HymnService = {
   },
 
   delete: async (id) => {
-    return prisma.hymn.delete({
-      where: { id }
-    });
+    // Fetch hymn with files to remove uploaded files from disk first
+    const hymn = await prisma.hymn.findUnique({ where: { id }, include: { files: true } });
+    if (!hymn) return null;
+
+    // Determine uploads directory from env or fallback
+    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'server', 'uploads');
+
+    for (const file of hymn.files || []) {
+      try {
+        // file.fileUrl is expected to be a URL like http://host/uploads/<filename>
+        const parsed = new URL(file.fileUrl);
+        const filename = path.basename(parsed.pathname);
+        const filePath = path.join(uploadsDir, filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        // If fileUrl is not a valid URL, try to resolve as a plain filename
+        try {
+          const filename = path.basename(file.fileUrl || '');
+          const filePath = path.join(uploadsDir, filename);
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (e) {
+          // swallow errors to avoid preventing DB deletion
+          console.error('Failed to remove uploaded file:', e.message || e);
+        }
+      }
+    }
+
+    return prisma.hymn.delete({ where: { id } });
   }
 };

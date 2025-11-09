@@ -6,6 +6,7 @@ import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { normalizeArabic } from '../../utils/normalizeArabic';
 import TagMultiSelect from '../../components/TagMultiSelect';
 import { FILE_TYPES } from '../../constants/fileTypes';
+import FilePicker from '../../components/FilePicker';
 import { parseOptionalInt } from '../../utils/formatters';
 
 const HymnForm = () => {
@@ -80,7 +81,9 @@ const HymnForm = () => {
     setFormData(prev => ({
       ...prev,
       files: prev.files.map((file, i) =>
-        i === index ? { ...file, [field]: value } : file
+        i === index
+          ? (field === null ? { ...value } : { ...file, [field]: value })
+          : file
       )
     }));
   };
@@ -264,50 +267,13 @@ const HymnForm = () => {
           ) : (
             <div className="space-y-3">
               {formData.files.map((file, index) => (
-                <div key={index} className="flex space-x-3 space-x-reverse p-3 border border-gray-300 rounded-md">
-                  <select
-                    value={file.type}
-                    onChange={(e) => updateFile(index, 'type', e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">اختر نوع الملف</option>
-                    {FILE_TYPES.map(t => (
-                      <option key={t.value} value={t.value}>{t.label.toUpperCase()}</option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="url"
-                    value={file.fileUrl}
-                    onChange={(e) => updateFile(index, 'fileUrl', e.target.value)}
-                    placeholder="رابط الملف"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-
-                  <input
-                    type="number"
-                    value={file.size}
-                    onChange={(e) => updateFile(index, 'size', e.target.value)}
-                    placeholder="الحجم (بايت)"
-                    className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-
-                  <input
-                    type="number"
-                    value={file.duration}
-                    onChange={(e) => updateFile(index, 'duration', e.target.value)}
-                    placeholder="المدة (ثواني)"
-                    className="w-28 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => removeFile(index)}
-                    className="text-red-600 hover:text-red-800 p-1"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
+                <FilePicker
+                  key={index}
+                  index={index}
+                  value={file}
+                  onChange={(updated) => updateFile(index, null, updated)}
+                  onRemove={() => removeFile(index)}
+                />
               ))}
             </div>
           )}

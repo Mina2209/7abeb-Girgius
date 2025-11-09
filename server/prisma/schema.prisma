@@ -38,7 +38,7 @@ model Tag {
 
 model File {
   id        String   @id @default(uuid())
-  hymn      Hymn     @relation(fields: [hymnId], references: [id])
+  hymn      Hymn     @relation(fields: [hymnId], references: [id], onDelete: Cascade)
   hymnId    String
   type      FileType
   fileUrl   String
