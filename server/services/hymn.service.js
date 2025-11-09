@@ -1,7 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 const prisma = new PrismaClient();
+
+// Resolve uploads directory relative to this file when UPLOADS_DIR is not set.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const HymnService = {
   getAll: async () => {
@@ -66,8 +71,9 @@ export const HymnService = {
     const hymn = await prisma.hymn.findUnique({ where: { id }, include: { files: true } });
     if (!hymn) return null;
 
-    // Determine uploads directory from env or fallback
-    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'server', 'uploads');
+  // Determine uploads directory from env or fallback (resolve relative to this file so it's consistent
+  // with the upload route which uses __dirname).
+  const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
 
     for (const file of hymn.files || []) {
       try {
