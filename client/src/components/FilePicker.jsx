@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FILE_TYPES } from '../constants/fileTypes';
 
