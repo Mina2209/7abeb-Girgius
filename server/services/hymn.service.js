@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import s3Service from './s3.service.js';
 const prisma = new PrismaClient();
 
 // Resolve uploads directory relative to this file when UPLOADS_DIR is not set.
@@ -76,25 +77,56 @@ export const HymnService = {
   const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
 
     for (const file of hymn.files || []) {
+      // try local disk removal (backwards compatibility)
       try {
-        // file.fileUrl is expected to be a URL like http://host/uploads/<filename>
         const parsed = new URL(file.fileUrl);
         const filename = path.basename(parsed.pathname);
         const filePath = path.join(uploadsDir, filename);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
+          continue; // removed locally, continue to next file
         }
       } catch (err) {
-        // If fileUrl is not a valid URL, try to resolve as a plain filename
-        try {
-          const filename = path.basename(file.fileUrl || '');
-          const filePath = path.join(uploadsDir, filename);
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        } catch (e) {
-          // swallow errors to avoid preventing DB deletion
-          console.error('Failed to remove uploaded file:', e.message || e);
-        }
+        // not a local URL, proceed to s3/delete attempts
       }
+
+      // If fileUrl is a server download endpoint like /api/uploads/url?key=<key>
+      try {
+        if (file.fileUrl && file.fileUrl.includes('key=')) {
+          const parts = file.fileUrl.split('key=');
+          const key = decodeURIComponent(parts[1] || '');
+          if (key) {
+            try {
+              await s3Service.deleteObject(key);
+              continue;
+            } catch (e) {
+              console.error('Failed to delete s3 object by key:', e.message || e);
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // As a fallback, if fileUrl contains the bucket name or an S3 URL, try to extract key
+      try {
+        const bucket = process.env.AWS_S3_BUCKET;
+        if (file.fileUrl && bucket && file.fileUrl.includes(bucket)) {
+          const urlParts = file.fileUrl.split('/');
+          const maybeKey = urlParts.slice(urlParts.indexOf(bucket) + 1).join('/');
+          if (maybeKey) {
+            try {
+              await s3Service.deleteObject(maybeKey);
+              continue;
+            } catch (e) {
+              console.error('Failed to delete s3 object by inferred key:', e.message || e);
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      // otherwise nothing else to do for this file
     }
 
     return prisma.hymn.delete({ where: { id } });

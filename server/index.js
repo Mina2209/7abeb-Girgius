@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from "cors";
 import { fileURLToPath } from 'url';
@@ -24,10 +25,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/sayings', sayingRoutes);
 app.use('/api/uploads', uploadRoutes);
 
-// serve uploaded files statically from configured UPLOADS_DIR or fallback
-// Use __dirname so the path is correct regardless of process.cwd()
-const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsDir));
+// note: uploads are served from S3 via presigned URLs; no local static serving
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
