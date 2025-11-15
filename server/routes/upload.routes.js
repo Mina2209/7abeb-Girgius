@@ -6,7 +6,7 @@ const router = Router();
 
 // Request a presigned PUT URL for uploading directly to S3
 // body: { filename, contentType }
-router.post('/presign', auth, async (req, res) => {
+router.post('/presign', async (req, res) => {
   try {
     const { filename, contentType } = req.body || {};
     if (!filename || !contentType) return res.status(400).json({ error: 'filename and contentType required' });
@@ -21,7 +21,7 @@ router.post('/presign', auth, async (req, res) => {
 
 // Redirect to a presigned GET URL so frontend can download via a stable API URL
 // query: ?key=objectKey
-router.get('/url', auth, async (req, res) => {
+router.get('/url', async (req, res) => {
   try {
     const { key } = req.query;
     if (!key) return res.status(400).send('key required');
@@ -49,7 +49,7 @@ router.delete('/:key', auth, async (req, res) => {
 
 // Multipart upload endpoints
 // Initiate multipart upload -> returns { key, uploadId }
-router.post('/multipart/initiate', auth, async (req, res) => {
+router.post('/multipart/initiate', async (req, res) => {
   try {
     const { filename, contentType } = req.body || {};
     if (!filename || !contentType) return res.status(400).json({ error: 'filename and contentType required' });
@@ -62,7 +62,7 @@ router.post('/multipart/initiate', auth, async (req, res) => {
 });
 
 // Presign a specific part for multipart upload
-router.post('/multipart/presign-part', auth, async (req, res) => {
+router.post('/multipart/presign-part', async (req, res) => {
   try {
     const { key, uploadId, partNumber } = req.body || {};
     if (!key || !uploadId || !partNumber) return res.status(400).json({ error: 'key, uploadId and partNumber required' });
@@ -75,7 +75,7 @@ router.post('/multipart/presign-part', auth, async (req, res) => {
 });
 
 // Complete multipart upload
-router.post('/multipart/complete', auth, async (req, res) => {
+router.post('/multipart/complete', async (req, res) => {
   try {
     const { key, uploadId, parts } = req.body || {};
     if (!key || !uploadId || !parts) return res.status(400).json({ error: 'key, uploadId and parts required' });
@@ -88,7 +88,7 @@ router.post('/multipart/complete', auth, async (req, res) => {
 });
 
 // Abort multipart upload
-router.post('/multipart/abort', auth, async (req, res) => {
+router.post('/multipart/abort', async (req, res) => {
   try {
     const { key, uploadId } = req.body || {};
     if (!key || !uploadId) return res.status(400).json({ error: 'key and uploadId required' });

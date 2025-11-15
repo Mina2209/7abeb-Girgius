@@ -13,7 +13,7 @@ const mimeToType = (mime) => {
   return null;
 };
 
-const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, index }) => {
+const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, index, placeholder = false, onActivate = () => {} }) => {
   const inputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(value.fileUrl || '');
   const [autoType, setAutoType] = useState(value.type || '');
@@ -23,7 +23,29 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
   const [progress, setProgress] = useState(0);
 
   const openFileDialog = () => {
+    // If this is a placeholder slot, notify parent to activate it (remove fade and provide a new placeholder)
+    if (placeholder) onActivate(index);
     inputRef.current?.click();
+  };
+
+  const formatBytes = (bytes) => {
+    const n = Number(bytes) || 0;
+    if (n === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(n) / Math.log(1024));
+    const value = n / Math.pow(1024, i);
+    return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(2)} ${units[i]}`;
+  };
+
+  const formatDuration = (secs) => {
+    const s = Number(secs);
+    if (!Number.isFinite(s) || isNaN(s)) return '';
+    const sec = Math.floor(s % 60);
+    const min = Math.floor((s / 60) % 60);
+    const hrs = Math.floor(s / 3600);
+    const pad = (n) => String(n).padStart(2, '0');
+    if (hrs > 0) return `${hrs}:${pad(min)}:${pad(sec)}`;
+    return `${pad(min)}:${pad(sec)}`;
   };
 
   const handleFileChosen = async (file) => {
@@ -150,6 +172,7 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
 
   const handleTypeChange = (e) => {
     const newType = e.target.value;
+    if (!newType) return; // prevent clearing type by selecting the placeholder
     setAutoType(newType);
     // user manually changed type; mark as not auto-filled for type
     setAutoFilled(prev => ({ ...prev, type: false }));
@@ -157,16 +180,25 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
   };
 
   return (
-    <div className="flex items-start gap-3 p-3 border border-gray-300 rounded-md">
+    <div className={`relative flex flex-col sm:flex-row items-start gap-3 p-3 border border-gray-200 rounded-md transition-all duration-200 ${placeholder ? 'opacity-40 hover:opacity-95 cursor-pointer bg-gray-50 shadow-sm' : 'bg-white hover:shadow'} `}>
+      {/* Trash / remove icon at top-right */}
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="absolute -top-2 -right-2 bg-white border rounded-full p-1 shadow hover:bg-red-50 text-red-600 z-10"
+        aria-label="Remove file slot"
+      >
+        <XMarkIcon className="h-4 w-4" />
+      </button>
       <input ref={inputRef} type="file" className="hidden" onChange={onFileInputChange} />
 
       {/* Preview column */}
-      <div className="w-40 flex-shrink-0">
+      <div className="w-full sm:w-40 flex-shrink-0">
         <button type="button" onClick={openFileDialog} className="w-full px-3 py-2 bg-blue-100 text-blue-700 rounded-md">اختر ملف</button>
         {previewUrl && (
           <div className="mt-2">
             {autoType && autoType.startsWith('VIDEO') ? (
-              <video src={previewUrl} className="w-40 h-24 object-contain" controls />
+              <video src={previewUrl} className="w-full sm:w-40 h-24 object-contain" controls />
             ) : autoType === 'MUSIC_AUDIO' ? (
               <div className="flex items-center gap-2">
                 <audio src={previewUrl} controls className="w-full" />
@@ -188,12 +220,12 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
       </div>
 
       {/* Details column */}
-      <div className="flex-1 flex items-center gap-3">
-        <div className="flex-1">
+      <div className="flex-1 flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex-1 min-w-[180px]">
           {/* Type selector / display */}
           {autoType && autoType.startsWith('VIDEO') ? (
             <select value={value.type || autoType || ''} onChange={handleTypeChange} className="px-3 py-2 border rounded-md w-full">
-              <option value="">اختر نوع</option>
+              <option value="" disabled>اختر نوع</option>
               {FILE_TYPES.filter(ft => ft.value.startsWith('VIDEO')).map(ft => (
                 <option key={ft.value} value={ft.value}>{ft.label}</option>
               ))}
@@ -205,32 +237,25 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
           )}
         </div>
 
-        <div className="w-28">
-          <input
-            type="number"
-            value={value.size || ''}
-            onChange={(e) => onChange({ ...value, size: e.target.value })}
-            placeholder="الحجم"
-            className="w-full px-2 py-1 border rounded-md text-sm"
-            readOnly={!!autoFilled.size || uploading}
-          />
-        </div>
+        {/* File details: shown only when a file exists */}
+        { (value.fileUrl || filename) && (
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <div className="text-xs text-gray-500 mr-1">معلومات الملف</div>
+            <div className="w-full sm:w-36 text-sm text-gray-700">
+              <div>{value.size ? formatBytes(value.size) : '-'}</div>
+            </div>
 
-        <div className="w-28">
-          <input
-            type="number"
-            value={value.duration || ''}
-            onChange={(e) => onChange({ ...value, duration: e.target.value })}
-            placeholder="المدة"
-            className="w-full px-2 py-1 border rounded-md text-sm"
-            readOnly={!!autoFilled.duration || uploading}
-          />
-        </div>
+            { (value.type && (value.type.startsWith('VIDEO') || value.type === 'MUSIC_AUDIO')) || !!value.duration ? (
+              <div className="w-full sm:w-36 text-sm text-gray-700">
+                <div className="text-xs text-gray-500 mb-1">المدة</div>
+                <div>{value.duration ? formatDuration(value.duration) : '-'}</div>
+              </div>
+            ) : null }
+          </div>
+        ) }
 
         <div>
-          <button type="button" onClick={() => onRemove(index)} className="text-red-600 p-1">
-            <XMarkIcon className="h-5 w-5" />
-          </button>
+          {/* empty space kept for layout consistency */}
         </div>
       </div>
     </div>

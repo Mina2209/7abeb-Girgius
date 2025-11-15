@@ -19,7 +19,7 @@ const HymnForm = () => {
   const [formData, setFormData] = useState({
     title: '',
     tags: [],
-    files: [],
+    files: [{ type: '', fileUrl: '', size: '', duration: '', placeholder: true }],
     pendingTagNames: []
   });
 
@@ -35,7 +35,8 @@ const HymnForm = () => {
         setFormData({
           title: hymn.title || '',
           tags: hymn.tags ? hymn.tags.map(t => t.id) : [],
-          files: hymn.files || [],
+          // preserve existing files and ensure we don't carry placeholder flags
+          files: (hymn.files || []).map(f => ({ ...f, placeholder: false })),
           pendingTagNames: []
         });
       }
@@ -67,7 +68,7 @@ const HymnForm = () => {
   const addFile = () => {
     setFormData(prev => ({
       ...prev,
-      files: [...prev.files, { type: '', fileUrl: '', size: '', duration: '' }]
+      files: [...prev.files, { type: '', fileUrl: '', size: '', duration: '', placeholder: true }]
     }));
   };
 
@@ -91,6 +92,16 @@ const HymnForm = () => {
         files: prev.files.filter((_, i) => i !== index)
       }));
     })();
+  };
+
+  const activateFileSlot = (index) => {
+    setFormData(prev => {
+      const files = prev.files.map((f, i) => i === index ? { ...(f || {}), placeholder: false } : f);
+      // ensure there is at least one placeholder at the end
+      const hasPlaceholder = files.some(f => f && f.placeholder);
+      if (!hasPlaceholder) files.push({ type: '', fileUrl: '', size: '', duration: '', placeholder: true });
+      return { ...prev, files };
+    });
   };
 
   const updateFile = (index, field, value) => {
@@ -287,6 +298,8 @@ const HymnForm = () => {
                   key={index}
                   index={index}
                   value={file}
+                  placeholder={!!file.placeholder}
+                  onActivate={activateFileSlot}
                   onChange={(updated) => updateFile(index, null, updated)}
                   onRemove={() => removeFile(index)}
                 />
