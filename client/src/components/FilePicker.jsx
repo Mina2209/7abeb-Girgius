@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import uploadService from '../api/uploadService';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FILE_TYPES } from '../constants/fileTypes';
 
@@ -90,36 +91,48 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
-    // upload to backend (simulate S3) with progress
+    // upload to S3 via presigned PUT (server provides URL) or multipart for large files
     setUploading(true);
     setProgress(0);
     try {
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/uploads');
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const json = JSON.parse(xhr.responseText);
-              updated.fileUrl = json.fileUrl;
-              updated.size = json.size || updated.size;
-            } catch (err) {
-              console.error('Invalid upload response', err);
+      const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB - switch to multipart above this
+      if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
+        // use multipart upload with progress callback
+        const { key } = await uploadService.uploadLargeFile(file, (percent) => {
+          setProgress(percent);
+        });
+        updated.fileUrl = `/api/uploads/url?key=${encodeURIComponent(key)}`;
+        updated.size = file.size || updated.size;
+        updated.fileName = file.name;
+      } else {
+        // single PUT
+        const presignJson = await uploadService.presign(file.name, file.type);
+        const { url, key } = presignJson;
+
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('PUT', url);
+          // set content type so S3 stores correct metadata
+          xhr.setRequestHeader('Content-Type', file.type);
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              // use server endpoint to generate a presigned GET when needed
+              updated.fileUrl = `/api/uploads/url?key=${encodeURIComponent(key)}`;
+              updated.size = file.size || updated.size;
+              updated.fileName = file.name;
+              resolve();
+            } else {
+              console.error('Upload failed', xhr.statusText || xhr.responseText);
+              reject(new Error('Upload failed'));
             }
-            resolve();
-          } else {
-            console.error('Upload failed', xhr.statusText);
-            reject(new Error('Upload failed'));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Upload error'));
-        const form = new FormData();
-        form.append('file', file);
-        xhr.send(form);
-      });
+          };
+          xhr.onerror = () => reject(new Error('Upload error'));
+          xhr.send(file);
+        });
+      }
     } catch (err) {
       console.error('Upload error', err);
     } finally {

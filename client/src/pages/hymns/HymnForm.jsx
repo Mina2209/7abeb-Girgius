@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useHymns } from '../../contexts/HymnContext';
 import { useTags } from '../../contexts/TagContext';
+import uploadService from '../../api/uploadService';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { normalizeArabic } from '../../utils/normalizeArabic';
 import TagMultiSelect from '../../components/TagMultiSelect';
@@ -71,10 +72,25 @@ const HymnForm = () => {
   };
 
   const removeFile = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      files: prev.files.filter((_, i) => i !== index)
-    }));
+    (async () => {
+      const file = formData.files[index];
+      // confirm with user before deleting
+      const ok = window.confirm('Are you sure you want to remove this file? This will also delete the uploaded file from storage if it was uploaded.');
+      if (!ok) return;
+      try {
+        // attempt to delete from server/S3 if fileUrl contains a key
+        const { deleteFromFileUrl } = uploadService;
+        if (file && file.fileUrl) {
+          await deleteFromFileUrl(file.fileUrl).catch(() => null);
+        }
+      } catch (e) {
+        // ignore errors from deletion - don't block UI
+      }
+      setFormData(prev => ({
+        ...prev,
+        files: prev.files.filter((_, i) => i !== index)
+      }));
+    })();
   };
 
   const updateFile = (index, field, value) => {
