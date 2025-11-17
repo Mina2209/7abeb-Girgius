@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { SayingService } from '../api/sayingService';
+import { SayingService } from '../api';
 
 export const useSayingApi = () => {
   const [loading, setLoading] = useState(false);

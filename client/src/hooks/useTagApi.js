@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { TagService } from '../api/tagService';
+import { TagService } from '../api';
 
 export const useTagApi = () => {
   const [loading, setLoading] = useState(false);

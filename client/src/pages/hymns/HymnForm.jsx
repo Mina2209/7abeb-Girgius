@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useHymns } from '../../contexts/HymnContext';
 import { useTags } from '../../contexts/TagContext';
-import uploadService from '../../api/uploadService';
+import { uploadService } from '../../api';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { normalizeArabic } from '../../utils/normalizeArabic';
 import TagMultiSelect from '../../components/TagMultiSelect';

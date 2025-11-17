@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import uploadService from '../api/uploadService';
+import { uploadService } from '../api';
+import { API_BASE } from '../config/apiConfig';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FILE_TYPES } from '../constants/fileTypes';
 
@@ -118,12 +119,12 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
     setProgress(0);
     try {
       const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB - switch to multipart above this
-      if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
+        if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
         // use multipart upload with progress callback
         const { key } = await uploadService.uploadLargeFile(file, (percent) => {
           setProgress(percent);
         });
-        updated.fileUrl = `/api/uploads/url?key=${encodeURIComponent(key)}`;
+        updated.fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
         updated.size = file.size || updated.size;
         updated.fileName = file.name;
       } else {
@@ -142,7 +143,7 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               // use server endpoint to generate a presigned GET when needed
-              updated.fileUrl = `/api/uploads/url?key=${encodeURIComponent(key)}`;
+              updated.fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
               updated.size = file.size || updated.size;
               updated.fileName = file.name;
               resolve();

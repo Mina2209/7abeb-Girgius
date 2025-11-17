@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { HymnService } from '../api/hymnService';
+import { HymnService } from '../api';
 
 export const useHymnApi = () => {
   const [loading, setLoading] = useState(false);

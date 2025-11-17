@@ -1,6 +1,8 @@
+import { API_BASE } from '../config/apiConfig';
+
 // Helper for upload-related API calls (presign, delete)
 export async function presign(filename, contentType) {
-  const res = await fetch('/api/uploads/presign', {
+  const res = await fetch(`${API_BASE}/uploads/presign`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ filename, contentType }),
@@ -11,7 +13,7 @@ export async function presign(filename, contentType) {
 
 // Multipart helpers
 export async function initiateMultipart(filename, contentType) {
-  const res = await fetch('/api/uploads/multipart/initiate', {
+  const res = await fetch(`${API_BASE}/uploads/multipart/initiate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ filename, contentType }),
@@ -21,7 +23,7 @@ export async function initiateMultipart(filename, contentType) {
 }
 
 export async function presignPart({ key, uploadId, partNumber }) {
-  const res = await fetch('/api/uploads/multipart/presign-part', {
+  const res = await fetch(`${API_BASE}/uploads/multipart/presign-part`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key, uploadId, partNumber }),
@@ -31,7 +33,7 @@ export async function presignPart({ key, uploadId, partNumber }) {
 }
 
 export async function completeMultipart({ key, uploadId, parts }) {
-  const res = await fetch('/api/uploads/multipart/complete', {
+  const res = await fetch(`${API_BASE}/uploads/multipart/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key, uploadId, parts }),
@@ -41,7 +43,7 @@ export async function completeMultipart({ key, uploadId, parts }) {
 }
 
 export async function abortMultipart({ key, uploadId }) {
-  const res = await fetch('/api/uploads/multipart/abort', {
+  const res = await fetch(`${API_BASE}/uploads/multipart/abort`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key, uploadId }),
@@ -106,7 +108,7 @@ export async function uploadLargeFile(file, onProgress = () => {}) {
 }
 
 export async function deleteKey(key) {
-  const res = await fetch(`/api/uploads/${encodeURIComponent(key)}`, {
+  const res = await fetch(`${API_BASE}/uploads/${encodeURIComponent(key)}`, {
     method: 'DELETE',
   });
   if (!res.ok) {
