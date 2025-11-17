@@ -18,9 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.json());
-app.use(cors({
-  origin: "http://localhost:5173",
-}));
+app.use(cors());
 
 app.use('/api/hymns', hymnRoutes);
 app.use('/api/tags', tagRoutes);
@@ -29,7 +27,12 @@ app.use('/api/uploads', uploadRoutes);
 
 // note: uploads are served from S3 via presigned URLs; no local static serving
 
-const PORT = process.env.PORT || 4000;
+// Lightweight health endpoint for Elastic Beanstalk / load balancer
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+const PORT = process.env.PORT || 8080;
 
 async function main() {
   try {
