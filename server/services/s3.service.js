@@ -4,6 +4,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const region = process.env.AWS_REGION;
 const bucket = process.env.AWS_S3_BUCKET;
 
+// Optional prefix for S3 keys (e.g. 'Uploads/'). If set, ensure it ends with '/'.
+const rawPrefix = process.env.S3_KEY_PREFIX || process.env.AWS_S3_PREFIX || 'Uploads/';
+const S3_KEY_PREFIX = rawPrefix.endsWith('/') ? rawPrefix : `${rawPrefix}/`;
+
 if (!bucket) {
   console.warn('AWS_S3_BUCKET is not set. S3 operations will fail without it.');
 }
@@ -15,7 +19,7 @@ function sanitizeFilename(name) {
 }
 
 export async function getPresignedPutUrl({ filename, contentType, expiresIn = 900 }) {
-  const key = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
+  const key = `${S3_KEY_PREFIX}${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
   const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType });
   const url = await getSignedUrl(s3, command, { expiresIn });
   return { url, key, expiresIn };
@@ -34,7 +38,7 @@ export async function deleteObject(key) {
 
 // Multipart upload helpers
 export async function createMultipartUpload({ filename, contentType }) {
-  const key = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
+  const key = `${S3_KEY_PREFIX}${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
   const command = new CreateMultipartUploadCommand({ Bucket: bucket, Key: key, ContentType: contentType });
   const res = await s3.send(command);
   // res.UploadId
