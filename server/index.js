@@ -13,9 +13,6 @@ import uploadRoutes from './routes/upload.routes.js';
 const app = express();
 const prisma = new PrismaClient();
 
-// resolve __dirname for consistent uploads path resolution
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 app.use(express.json());
 app.use(cors());
