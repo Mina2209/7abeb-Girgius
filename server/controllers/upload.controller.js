@@ -2,29 +2,6 @@ import defaultS3Service from '../services/s3.service.js';
 
 // Controller factory that accepts an S3 service instance (for easier testing/DI)
 export function createUploadController(s3Service = defaultS3Service) {
-  // Map common errors (AWS SDK, http metadata, etc.) to appropriate HTTP statuses
-  const mapErrorToStatus = (err) => {
-    if (!err) return 500;
-    // Prefer explicit HTTP status if provided by AWS SDK metadata
-    const metaStatus = err?.$metadata?.httpStatusCode || err?.statusCode || err?.status;
-    if (metaStatus && Number(metaStatus)) return Number(metaStatus);
-
-    const code = String(err?.Code || err?.code || err?.name || '').toLowerCase();
-    const msg = String(err?.message || '');
-
-    // Not found
-    if (/nosuchkey|notfound|noSuchKey|not_found/.test(code) || /no such key/i.test(msg)) return 404;
-
-    // Forbidden / access denied
-    if (/accessdenied|forbidden|unauthorized|access_denied/.test(code) || /access denied/i.test(msg)) return 403;
-
-    // Service unavailable / rate limited
-    if (/serviceunavailable|slowdown|throttling|throttled/.test(code) || /service unavailable/i.test(msg)) return 503;
-
-    // Default to internal server error
-    return 500;
-  };
-
   return {
     // Request a presigned PUT URL for uploading directly to S3
     // body: { filename, contentType }
