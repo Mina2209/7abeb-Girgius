@@ -21,7 +21,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-27">
           <Link to="/" className="shrink-0">
             <img
-              src="/logo.png"
+              src="/logo.svg"
               alt="Logo"
               className="h-23 w-auto rounded-full"
             />
