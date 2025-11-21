@@ -302,6 +302,7 @@ const HymnForm = () => {
                   onActivate={activateFileSlot}
                   onChange={(updated) => updateFile(index, null, updated)}
                   onRemove={() => removeFile(index)}
+                  uploadType="hymn"
                 />
               ))}
             </div>

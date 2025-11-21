@@ -14,7 +14,7 @@ const mimeToType = (mime) => {
   return null;
 };
 
-const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, index, placeholder = false, onActivate = () => {} }) => {
+const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, index, placeholder = false, onActivate = () => {}, uploadType = null }) => {
   const inputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(value.fileUrl || '');
   const [autoType, setAutoType] = useState(value.type || '');
@@ -120,16 +120,16 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
     try {
       const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB - switch to multipart above this
         if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
-        // use multipart upload with progress callback
+        // use multipart upload with progress callback; pass uploadType (e.g. 'hymn') so server can place in correct folder
         const { key } = await uploadService.uploadLargeFile(file, (percent) => {
           setProgress(percent);
-        });
+        }, uploadType);
         updated.fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
         updated.size = file.size || updated.size;
         updated.fileName = file.name;
       } else {
         // single PUT
-        const presignJson = await uploadService.presign(file.name, file.type);
+        const presignJson = await uploadService.presign(file.name, file.type, uploadType);
         const { url, key } = presignJson;
 
         await new Promise((resolve, reject) => {
