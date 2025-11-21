@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useHymns } from '../../contexts/HymnContext';
 import { useTags } from '../../contexts/TagContext';
 import { uploadService } from '../../api';
+import { API_BASE } from '../../config/apiConfig';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { normalizeArabic } from '../../utils/normalizeArabic';
+// import { normalizeArabic } from '../../utils/normalizeArabic';
 import TagMultiSelect from '../../components/TagMultiSelect';
-import { FILE_TYPES } from '../../constants/fileTypes';
+// import { FILE_TYPES } from '../../constants/fileTypes';
 import FilePicker from '../../components/FilePicker';
 import { parseOptionalInt } from '../../utils/formatters';
 
@@ -25,6 +26,8 @@ const HymnForm = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [saveProgress, setSaveProgress] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   const isEditing = Boolean(id);
 
@@ -146,10 +149,114 @@ const HymnForm = () => {
         ...createdTagNames
       ];
 
+      // If there are any local files (attached as fileObject), upload them now
+      const filesCopy = JSON.parse(JSON.stringify(formData.files || []));
+
+      // Build list of files to upload and compute total bytes
+      const uploadIndexes = [];
+      let totalBytes = 0;
+      for (let i = 0; i < (formData.files || []).length; i++) {
+        const f = formData.files[i];
+        if (f && f.fileObject && f.fileObject.size) {
+          uploadIndexes.push(i);
+          totalBytes += f.fileObject.size;
+        }
+      }
+
+      let uploadedBytes = 0;
+      const prevPercent = {}; // used for multipart progress deltas
+      const prevLoaded = {}; // used for XHR progress deltas
+
+      if (uploadIndexes.length > 0 && totalBytes > 0) {
+        setSaving(true);
+        setSaveProgress(0);
+      }
+
+      for (let idx = 0; idx < (formData.files || []).length; idx++) {
+        const f = formData.files[idx];
+        if (!(f && f.fileObject)) continue;
+        const file = f.fileObject;
+        try {
+          const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
+          if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
+            prevPercent[idx] = 0;
+            const { key } = await uploadService.uploadLargeFile(file, (percent) => {
+              const prev = prevPercent[idx] || 0;
+              const deltaPercent = percent - prev;
+              prevPercent[idx] = percent;
+              const deltaBytes = Math.round((deltaPercent / 100) * file.size);
+              uploadedBytes += deltaBytes;
+              if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
+            }, 'hymn');
+
+            // ensure file fully counted
+            const counted = Math.round((prevPercent[idx] / 100) * file.size);
+            if (counted < file.size) {
+              uploadedBytes += (file.size - counted);
+            }
+
+            filesCopy[idx].fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
+            filesCopy[idx].size = file.size;
+            filesCopy[idx].fileName = file.name;
+          } else {
+            // single PUT with XHR to track progress
+            const presignJson = await uploadService.presign(file.name, file.type, 'hymn');
+            const { url, key } = presignJson;
+
+            await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('PUT', url);
+              xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+              prevLoaded[idx] = 0;
+              xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                  const delta = e.loaded - (prevLoaded[idx] || 0);
+                  prevLoaded[idx] = e.loaded;
+                  uploadedBytes += delta;
+                  if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
+                }
+              };
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  // ensure we count remaining bytes for this file
+                  const counted = prevLoaded[idx] || 0;
+                  if (counted < file.size) {
+                    uploadedBytes += (file.size - counted);
+                    if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
+                  }
+                  resolve();
+                } else {
+                  reject(new Error('Upload failed'));
+                }
+              };
+              xhr.onerror = () => reject(new Error('Upload error'));
+              xhr.send(file);
+            });
+
+            filesCopy[idx].fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
+            filesCopy[idx].size = file.size;
+            filesCopy[idx].fileName = file.name;
+          }
+
+          // remove fileObject before sending to API
+          delete filesCopy[idx].fileObject;
+          if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
+        } catch (err) {
+          console.error('Failed to upload file', err);
+          throw err;
+        }
+      }
+
+      // finalize progress
+      if (uploadIndexes.length > 0 && totalBytes > 0) {
+        setSaveProgress(100);
+        setSaving(false);
+      }
+
       const hymnData = {
         title: formData.title,
         tags: allTagNames,
-        files: formData.files
+        files: filesCopy
           .filter(f => f.type && f.fileUrl)
           .map(f => ({
             type: f.type,
@@ -192,6 +299,16 @@ const HymnForm = () => {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
+          </div>
+        )}
+
+        {/* Global save/upload progress */}
+        {(saving || saveProgress > 0) && (
+          <div>
+            <div className="w-full bg-gray-200 rounded h-2 overflow-hidden mt-2">
+              <div className="h-2 bg-blue-600 transition-all" style={{ width: `${saveProgress}%` }} />
+            </div>
+            <div className="text-sm text-gray-600 mt-1">حالة التحميل: {saveProgress}%</div>
           </div>
         )}
 

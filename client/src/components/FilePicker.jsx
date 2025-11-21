@@ -1,6 +1,4 @@
 import { useRef, useState } from 'react';
-import { uploadService } from '../api';
-import { API_BASE } from '../config/apiConfig';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FILE_TYPES } from '../constants/fileTypes';
 
@@ -20,8 +18,7 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
   const [autoType, setAutoType] = useState(value.type || '');
   const [autoFilled, setAutoFilled] = useState({ type: false, size: false, duration: false });
   const [filename, setFilename] = useState(value.fileName || '');
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  
 
   const openFileDialog = () => {
     // If this is a placeholder slot, notify parent to activate it (remove fade and provide a new placeholder)
@@ -114,54 +111,10 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
-    // upload to S3 via presigned PUT (server provides URL) or multipart for large files
-    setUploading(true);
-    setProgress(0);
-    try {
-      const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB - switch to multipart above this
-        if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
-        // use multipart upload with progress callback; pass uploadType (e.g. 'hymn') so server can place in correct folder
-        const { key } = await uploadService.uploadLargeFile(file, (percent) => {
-          setProgress(percent);
-        }, uploadType);
-        updated.fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
-        updated.size = file.size || updated.size;
-        updated.fileName = file.name;
-      } else {
-        // single PUT
-        const presignJson = await uploadService.presign(file.name, file.type, uploadType);
-        const { url, key } = presignJson;
-
-        await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', url);
-          // set content type so S3 stores correct metadata
-          xhr.setRequestHeader('Content-Type', file.type);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              // use server endpoint to generate a presigned GET when needed
-              updated.fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
-              updated.size = file.size || updated.size;
-              updated.fileName = file.name;
-              resolve();
-            } else {
-              console.error('Upload failed', xhr.statusText || xhr.responseText);
-              reject(new Error('Upload failed'));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Upload error'));
-          xhr.send(file);
-        });
-      }
-    } catch (err) {
-      console.error('Upload error', err);
-    } finally {
-      setUploading(false);
-      setProgress(0);
-    }
+    // Do NOT upload here. Keep the file object and preview local and
+    // let the parent form perform the upload when the user clicks Save.
+    // Attach the actual File object so parent can upload later.
+    updated.fileObject = file;
 
     onChange(updated);
   };
@@ -210,14 +163,7 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
           </div>
         )}
         {filename && <div className="text-xs text-gray-600 mt-2 truncate">{filename}</div>}
-        {uploading && (
-          <div className="mt-2">
-            <div className="w-full bg-gray-200 rounded h-2 overflow-hidden">
-              <div className="h-2 bg-blue-600" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="text-xs text-gray-500 mt-1">Uploading {progress}%</div>
-          </div>
-        )}
+        
       </div>
 
       {/* Details column */}
