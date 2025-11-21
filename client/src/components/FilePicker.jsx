@@ -147,12 +147,12 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
       <input ref={inputRef} type="file" className="hidden" onChange={onFileInputChange} />
 
       {/* Preview column */}
-      <div className="w-full sm:w-40 flex-shrink-0">
+      <div className="w-full sm:w-80 flex-shrink-0">
         <button type="button" onClick={openFileDialog} className="w-full px-3 py-2 bg-blue-100 text-blue-700 rounded-md">اختر ملف</button>
         {previewUrl && (
           <div className="mt-2">
             {autoType && autoType.startsWith('VIDEO') ? (
-              <video src={previewUrl} className="w-full sm:w-40 h-24 object-contain" controls />
+              <video src={previewUrl} className="w-full sm:w-80 h-24 object-contain" controls />
             ) : autoType === 'MUSIC_AUDIO' ? (
               <div className="flex items-center gap-2">
                 <audio src={previewUrl} controls className="w-full" />
