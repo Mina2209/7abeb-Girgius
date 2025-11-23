@@ -2,13 +2,43 @@ import defaultS3Service from '../services/s3.service.js';
 
 // Controller factory that accepts an S3 service instance (for easier testing/DI)
 export function createUploadController(s3Service = defaultS3Service) {
+  // Load optional folder/type mapping and allowlist from environment
+  // S3_FOLDER_MAP should be a JSON string like: {"hymn":"Hymns","image":"Images"}
+  let folderMap = {};
+  try {
+    if (process.env.S3_FOLDER_MAP) folderMap = JSON.parse(process.env.S3_FOLDER_MAP);
+  } catch (e) {
+    console.warn('Invalid S3_FOLDER_MAP environment variable, expected JSON. Ignoring.');
+    folderMap = {};
+  }
+
+  const allowedFolders = process.env.S3_ALLOWED_FOLDERS
+    ? process.env.S3_ALLOWED_FOLDERS.split(',').map(s => s.trim()).filter(Boolean)
+    : null;
+
+  function resolveFolder(req) {
+    const body = req.body || {};
+    const query = req.query || {};
+    const raw = body.folder || query.folder || body.type || query.type || null;
+    if (!raw) return null;
+    // if mapping exists, map the raw type to folder name
+    const mapped = folderMap[raw] || raw;
+    // If allowlist is set, enforce it
+    if (allowedFolders && !allowedFolders.includes(mapped)) return null;
+    return mapped;
+  }
+
   return {
     // Request a presigned PUT URL for uploading directly to S3
     // body: { filename, contentType }
       presign: async (req, res) => {
         const { filename, contentType } = req.body || {};
         if (!filename || !contentType) return res.status(400).json({ error: 'filename and contentType required' });
-        const result = await s3Service.getPresignedPutUrl({ filename, contentType });
+        const folder = resolveFolder(req);
+        if ((req.body?.folder || req.body?.type) && !folder) {
+          return res.status(400).json({ error: 'invalid or disallowed folder/type' });
+        }
+        const result = await s3Service.getPresignedPutUrl({ filename, contentType, folder });
         return res.json(result);
       },
 
@@ -35,7 +65,11 @@ export function createUploadController(s3Service = defaultS3Service) {
       initiateMultipart: async (req, res) => {
         const { filename, contentType } = req.body || {};
         if (!filename || !contentType) return res.status(400).json({ error: 'filename and contentType required' });
-        const result = await s3Service.createMultipartUpload({ filename, contentType });
+        const folder = resolveFolder(req);
+        if ((req.body?.folder || req.body?.type) && !folder) {
+          return res.status(400).json({ error: 'invalid or disallowed folder/type' });
+        }
+        const result = await s3Service.createMultipartUpload({ filename, contentType, folder });
         return res.json(result);
       },
 

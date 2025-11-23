@@ -1,22 +1,26 @@
 import { API_BASE } from '../config/apiConfig';
 
 // Helper for upload-related API calls (presign, delete)
-export async function presign(filename, contentType) {
+export async function presign(filename, contentType, folderOrType) {
+  const body = { filename, contentType };
+  if (folderOrType) body.folder = folderOrType;
   const res = await fetch(`${API_BASE}/uploads/presign`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename, contentType }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('Failed to get presigned url');
   return res.json();
 }
 
 // Multipart helpers
-export async function initiateMultipart(filename, contentType) {
+export async function initiateMultipart(filename, contentType, folderOrType) {
+  const body = { filename, contentType };
+  if (folderOrType) body.folder = folderOrType;
   const res = await fetch(`${API_BASE}/uploads/multipart/initiate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename, contentType }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('Failed to initiate multipart');
   return res.json();
@@ -53,11 +57,11 @@ export async function abortMultipart({ key, uploadId }) {
 }
 
 // High level: upload large file using multipart. onProgress receives percent (0-100)
-export async function uploadLargeFile(file, onProgress = () => {}) {
+export async function uploadLargeFile(file, onProgress = () => {}, folderOrType) {
   const MIN_PART_SIZE = 5 * 1024 * 1024; // 5MB minimum per S3 rules
   const PART_SIZE = 10 * 1024 * 1024; // 10MB per part
 
-  const { key, uploadId } = await initiateMultipart(file.name, file.type);
+  const { key, uploadId } = await initiateMultipart(file.name, file.type, folderOrType);
   const partsCount = Math.ceil(file.size / PART_SIZE);
   const parts = [];
   let uploadedBytes = 0;

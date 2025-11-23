@@ -1,13 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import s3Service from './s3.service.js';
 const prisma = new PrismaClient();
 
-// Resolve uploads directory relative to this file when UPLOADS_DIR is not set.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Server only: we rely on S3 for stored files. Local uploads fallback removed.
 
 export const HymnService = {
   getAll: async () => {
@@ -68,28 +63,11 @@ export const HymnService = {
   },
 
   delete: async (id) => {
-    // Fetch hymn with files to remove uploaded files from disk first
+    // Fetch hymn with files to remove uploaded files from S3
     const hymn = await prisma.hymn.findUnique({ where: { id }, include: { files: true } });
     if (!hymn) return null;
 
-  // Determine uploads directory from env or fallback (resolve relative to this file so it's consistent
-  // with the upload route which uses __dirname).
-  const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
-
     for (const file of hymn.files || []) {
-      // try local disk removal (backwards compatibility)
-      try {
-        const parsed = new URL(file.fileUrl);
-        const filename = path.basename(parsed.pathname);
-        const filePath = path.join(uploadsDir, filename);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-          continue; // removed locally, continue to next file
-        }
-      } catch (err) {
-        // not a local URL, proceed to s3/delete attempts
-      }
-
       // If fileUrl is a server download endpoint like /api/uploads/url?key=<key>
       try {
         if (file.fileUrl && file.fileUrl.includes('key=')) {

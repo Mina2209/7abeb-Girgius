@@ -13,12 +13,27 @@ export function createS3Service({ region, bucket, prefix = 'Uploads/' } = {}) {
 
   const s3 = new S3Client({ region });
 
-  const rawPrefix = prefix || 'Uploads/';
-  const S3_KEY_PREFIX = rawPrefix.endsWith('/') ? rawPrefix : `${rawPrefix}/`;
+  // Allow an explicit empty string to mean "no base prefix". If `prefix` is undefined use default.
+  const rawPrefix = (typeof prefix === 'string') ? prefix : 'Uploads/';
+  const S3_KEY_PREFIX = rawPrefix === '' ? '' : (rawPrefix.endsWith('/') ? rawPrefix : `${rawPrefix}/`);
+
+  function buildKeyPrefix(folder) {
+    if (!folder) return S3_KEY_PREFIX;
+    // strip leading/trailing slashes from folder and append to base prefix
+    const raw = String(folder);
+    // If folder starts with '/' or a '!' marker treat as absolute (do not prepend base prefix)
+    if (raw.startsWith('/') || raw.startsWith('!')) {
+      const cleaned = raw.replace(/^[/!]+|\/+$/g, '');
+      return `${cleaned}/`;
+    }
+    const cleaned = raw.replace(/^\/+|\/+$/g, '');
+    return `${S3_KEY_PREFIX}${cleaned}/`;
+  }
 
   return {
-    async getPresignedPutUrl({ filename, contentType, expiresIn = 900 }) {
-      const key = `${S3_KEY_PREFIX}${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
+    async getPresignedPutUrl({ filename, contentType, folder, expiresIn = 900 } = {}) {
+      const prefix = buildKeyPrefix(folder);
+      const key = `${prefix}${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
       const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType });
       const url = await getSignedUrl(s3, command, { expiresIn });
       return { url, key, expiresIn };
@@ -35,8 +50,9 @@ export function createS3Service({ region, bucket, prefix = 'Uploads/' } = {}) {
       return s3.send(command);
     },
 
-    async createMultipartUpload({ filename, contentType }) {
-      const key = `${S3_KEY_PREFIX}${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
+    async createMultipartUpload({ filename, contentType, folder } = {}) {
+      const prefix = buildKeyPrefix(folder);
+      const key = `${prefix}${Date.now()}-${Math.round(Math.random() * 1e9)}-${sanitizeFilename(filename)}`;
       const command = new CreateMultipartUploadCommand({ Bucket: bucket, Key: key, ContentType: contentType });
       const res = await s3.send(command);
       return { key, uploadId: res.UploadId };
@@ -68,8 +84,10 @@ export function createS3Service({ region, bucket, prefix = 'Uploads/' } = {}) {
 // default instance configured from environment variables for backwards compatibility
 const region = process.env.AWS_REGION;
 const bucket = process.env.AWS_S3_BUCKET;
-const prefix = process.env.S3_KEY_PREFIX || process.env.AWS_S3_PREFIX || 'Uploads/';
+// Respect an explicitly set empty prefix. Use nullish coalescing so empty string is preserved.
+const prefixEnv = process.env.S3_KEY_PREFIX ?? process.env.AWS_S3_PREFIX;
+const prefixToUse = (typeof prefixEnv === 'string') ? prefixEnv : 'Uploads/';
 
-const defaultService = createS3Service({ region, bucket, prefix });
+const defaultService = createS3Service({ region, bucket, prefix: prefixToUse });
 
 export default defaultService;
