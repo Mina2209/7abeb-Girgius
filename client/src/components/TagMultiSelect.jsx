@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { normalizeArabic } from '../utils/normalizeArabic';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -19,8 +19,27 @@ export default function TagMultiSelect({ allTags, selectedIds, onChange, placeho
 
   const filtered = allTags.filter(t => {
     const term = normalizeArabic(search);
-    return term === '' || normalizeArabic(t.name).includes(term);
+    return term === '' || normalizeArabic(t.name).includes(term) || (t.category && normalizeArabic(t.category).includes(term));
   });
+
+  // Group filtered tags by category
+  const groupedTags = useMemo(() => {
+    const groups = {};
+    const uncategorized = [];
+    
+    filtered.forEach(tag => {
+      if (tag.category) {
+        if (!groups[tag.category]) {
+          groups[tag.category] = [];
+        }
+        groups[tag.category].push(tag);
+      } else {
+        uncategorized.push(tag);
+      }
+    });
+    
+    return { groups, uncategorized };
+  }, [filtered]);
 
   const hasNoMatches = search.trim() !== '' && filtered.length === 0;
   const searchNormalized = normalizeArabic(search);
@@ -62,17 +81,47 @@ export default function TagMultiSelect({ allTags, selectedIds, onChange, placeho
               className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          {filtered.map(tag => (
-            <label key={tag.id} className="flex items-center px-4 py-2 hover:bg-gray-100">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(tag.id)}
-                onChange={() => toggle(tag.id)}
-                className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="text-sm text-gray-700">{tag.name}</span>
-            </label>
+          {/* Grouped by category */}
+          {Object.keys(groupedTags.groups).length > 0 && Object.keys(groupedTags.groups).sort().map(category => (
+            <div key={category}>
+              <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                <span className="text-xs font-semibold text-gray-600">{category}</span>
+              </div>
+              {groupedTags.groups[category].map(tag => (
+                <label key={tag.id} className="flex items-center px-4 py-2 hover:bg-gray-100 pr-8">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(tag.id)}
+                    onChange={() => toggle(tag.id)}
+                    className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-700">{tag.name}</span>
+                </label>
+              ))}
+            </div>
           ))}
+          
+          {/* Uncategorized tags */}
+          {groupedTags.uncategorized.length > 0 && (
+            <>
+              {Object.keys(groupedTags.groups).length > 0 && (
+                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 border-t border-gray-200">
+                  <span className="text-xs font-semibold text-gray-600">بدون فئة</span>
+                </div>
+              )}
+              {groupedTags.uncategorized.map(tag => (
+                <label key={tag.id} className="flex items-center px-4 py-2 hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(tag.id)}
+                    onChange={() => toggle(tag.id)}
+                    className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-700">{tag.name}</span>
+                </label>
+              ))}
+            </>
+          )}
           
           {hasNoMatches && !exactMatch && !isPending && onAddPendingTag && (
             <button

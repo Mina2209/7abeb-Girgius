@@ -30,6 +30,7 @@ model Saying {
 model Tag {
   id        String   @id @default(uuid())
   name      String   @unique
+  category  String?
   hymns     Hymn[]
   sayings   Saying[]
   createdAt DateTime @default(now())

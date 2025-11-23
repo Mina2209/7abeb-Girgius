@@ -17,7 +17,10 @@ export const TagService = {
 
   create: async (data) => {
     return prisma.tag.create({
-      data: { name: data.name },
+      data: { 
+        name: data.name,
+        category: data.category && data.category.trim() ? data.category.trim() : null
+      },
       include: { hymns: true, sayings: true }
     });
   },
@@ -25,7 +28,10 @@ export const TagService = {
   update: async (id, data) => {
     return prisma.tag.update({
       where: { id },
-      data: { name: data.name },
+      data: { 
+        name: data.name,
+        category: data.category !== undefined ? (data.category && data.category.trim() ? data.category.trim() : null) : undefined
+      },
       include: { hymns: true, sayings: true }
     });
   },

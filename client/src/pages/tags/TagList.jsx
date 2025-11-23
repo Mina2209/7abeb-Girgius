@@ -20,10 +20,20 @@ const TagList = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [selectedEntityTypes, setSelectedEntityTypes] = useState([]);
   const [showEntityTypesDropdown, setShowEntityTypesDropdown] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [showCategoriesDropdown, setShowCategoriesDropdown] = useState(false);
   const entityTypesRef = useRef(null);
+  const categoriesRef = useRef(null);
 
   // Close entity types dropdown on outside click
   useClickOutside(entityTypesRef, () => setShowEntityTypesDropdown(false), showEntityTypesDropdown);
+  useClickOutside(categoriesRef, () => setShowCategoriesDropdown(false), showCategoriesDropdown);
+
+  // Extract unique categories from tags
+  const categories = useMemo(() => {
+    const uniqueCategories = [...new Set(tags.filter(t => t.category).map(t => t.category))];
+    return uniqueCategories.sort();
+  }, [tags]);
 
   // Compute filtered tags on the fly
   const filteredTags = useMemo(() => {
@@ -47,9 +57,13 @@ const TagList = () => {
           }
         });
 
-      return matchesSearch && matchesEntityTypes;
+      // Category filter
+      const matchesCategory = selectedCategories.length === 0 || 
+        (tag.category && selectedCategories.includes(tag.category));
+
+      return matchesSearch && matchesEntityTypes && matchesCategory;
     });
-  }, [tags, localSearch, selectedEntityTypes]);
+  }, [tags, localSearch, selectedEntityTypes, selectedCategories]);
 
   const handleSearch = (e) => {
     const term = e.target.value;
@@ -65,10 +79,19 @@ const TagList = () => {
     );
   };
 
+  const handleCategoryToggle = (category) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(cat => cat !== category)
+        : [...prev, category]
+    );
+  };
+
   const clearFilters = () => {
     setLocalSearch('');
     setSearchTerm('');
     setSelectedEntityTypes([]);
+    setSelectedCategories([]);
   };
 
   const confirmDelete = (id) => setShowDeleteConfirm(id);
@@ -108,7 +131,7 @@ const TagList = () => {
 
       {/* Filter Controls */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search Input */}
           <div className="relative">
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -153,6 +176,39 @@ const TagList = () => {
               </div>
             )}
           </div>
+
+          {/* Categories Dropdown */}
+          {categories.length > 0 && (
+            <div className="relative" ref={categoriesRef}>
+              <button
+                onClick={() => setShowCategoriesDropdown(!showCategoriesDropdown)}
+                className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <span>الفئة {selectedCategories.length > 0 && `(${selectedCategories.length})`}</span>
+                <ChevronDownIcon className="h-5 w-5" />
+              </button>
+              {showCategoriesDropdown && (
+                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+                  {categories.map((category) => (
+                    <label
+                      key={category}
+                      className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => handleCategoryToggle(category)}
+                        className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {category}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Clear Filters Button */}
@@ -183,7 +239,14 @@ const TagList = () => {
               {/* Content wrapper that grows */}
               <div className="flex-1">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900">{tag.name}</h3>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">{tag.name}</h3>
+                    {tag.category && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                        {tag.category}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex space-x-2 space-x-reverse">
                     <Link to={`/tags/edit/${tag.id}`} className="text-blue-600 hover:text-blue-800 p-1">
                       <PencilIcon className="h-5 w-5" />
