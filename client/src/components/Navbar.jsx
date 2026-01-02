@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   const isActive = (path) => {
     // Exact match
@@ -13,6 +17,11 @@ const Navbar = () => {
     // Check if pathname starts with the path followed by a slash (for sub-routes)
     // This handles /hymns/add, /hymns/edit/:id, /tags/add, /tags/edit/:id, etc.
     return location.pathname.startsWith(path + '/');
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -58,14 +67,16 @@ const Navbar = () => {
                 تأملات
               </Link>
             </li>
-            <li>
-              <Link
-                to="/tags"
-                className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/tags") ? "bg-blue-700/60" : ""}`}
-              >
-                مواضيع
-              </Link>
-            </li>
+            {isAdmin() && (
+              <li>
+                <Link
+                  to="/tags"
+                  className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/tags") ? "bg-blue-700/60" : ""}`}
+                >
+                  مواضيع
+                </Link>
+              </li>
+            )}
             <li>
               <Link to="/sayings" className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/sayings") ? "bg-blue-700/60" : ""}`}>
                 اقوال اباء
@@ -88,7 +99,52 @@ const Navbar = () => {
             </li>
           </ul>
 
-          {/* Removed login dropdown for now */}
+          {/* User menu */}
+          {isAuthenticated() && (
+            <div className="hidden lg:block relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500/40 rounded-md hover:bg-blue-700/50"
+              >
+                <span className="text-sm">{user?.username}</span>
+                <span className={`text-xs px-2 py-1 rounded ${
+                  user?.role === 'ADMIN' ? 'bg-purple-500' : 'bg-blue-700'
+                }`}>
+                  {user?.role}
+                </span>
+              </button>
+              
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  {isAdmin() && (
+                    <>
+                      <Link
+                        to="/admin/users"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        User Management
+                      </Link>
+                      <Link
+                        to="/admin/logs"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Activity Logs
+                      </Link>
+                      <div className="border-t border-gray-200 my-1"></div>
+                    </>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Hamburger button (mobile) */}
           <button
@@ -174,15 +230,17 @@ const Navbar = () => {
                 تأملات
               </Link>
             </li>
-            <li>
-              <Link
-                to="/tags"
-                onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/tags") ? "bg-blue-700/60" : ""}`}
-              >
-                مواضيع
-              </Link>
-            </li>
+            {isAdmin() && (
+              <li>
+                <Link
+                  to="/tags"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-4 py-3 hover:bg-blue-700/50 ${isActive("/tags") ? "bg-blue-700/60" : ""}`}
+                >
+                  مواضيع
+                </Link>
+              </li>
+            )}
             <li>
               <Link
                 to="/sayings"
@@ -214,6 +272,47 @@ const Navbar = () => {
                 برامج
               </Link>
             </li>
+            
+            {/* Mobile user menu */}
+            {isAuthenticated() && (
+              <>
+                <li className="border-t border-blue-700/60 mt-2 pt-2">
+                  <div className="px-4 py-2 text-sm">
+                    User: {user?.username} ({user?.role})
+                  </div>
+                </li>
+                {isAdmin() && (
+                  <>
+                    <li>
+                      <Link
+                        to="/admin/users"
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 hover:bg-blue-700/50"
+                      >
+                        User Management
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to="/admin/logs"
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 hover:bg-blue-700/50"
+                      >
+                        Activity Logs
+                      </Link>
+                    </li>
+                  </>
+                )}
+                <li>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-3 hover:bg-blue-700/50"
+                  >
+                    Logout
+                  </button>
+                </li>
+              </>
+            )}
           </ul>
         </div>
       </div>
