@@ -1,7 +1,34 @@
 import { PrismaClient, FileType } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Create default admin user
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  const editorPassword = await bcrypt.hash('editor123', 10);
+  
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
+      username: 'admin',
+      password: adminPassword,
+      role: 'ADMIN'
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { username: 'editor' },
+    update: {},
+    create: {
+      username: 'editor',
+      password: editorPassword,
+      role: 'EDITOR'
+    }
+  });
+
+  console.log('Default users created: admin/admin123 and editor/editor123');
+
   const hymns = [
     {
       title: 'أصليله',

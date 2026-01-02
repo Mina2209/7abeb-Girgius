@@ -1,14 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from "cors";
-import { fileURLToPath } from 'url';
-import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
 import hymnRoutes from './routes/hymn.routes.js';
 import tagRoutes from './routes/tag.routes.js';
 import sayingRoutes from './routes/saying.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
+import authRoutes from './routes/auth.routes.js';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -17,6 +16,7 @@ const prisma = new PrismaClient();
 app.use(express.json());
 app.use(cors());
 
+app.use('/api/auth', authRoutes);
 app.use('/api/hymns', hymnRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/sayings', sayingRoutes);
