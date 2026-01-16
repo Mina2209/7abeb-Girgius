@@ -22,7 +22,7 @@ const HymnForm = () => {
     title: '',
     tags: [],
     files: [{ type: '', fileUrl: '', size: '', duration: '', placeholder: true }],
-    lyrics: [],
+    lyricContent: '',  // Single lyric content string
     pendingTagNames: []
   });
 
@@ -42,13 +42,8 @@ const HymnForm = () => {
           tags: hymn.tags ? hymn.tags.map(t => t.id) : [],
           // preserve existing files and ensure we don't carry placeholder flags
           files: (hymn.files || []).map(f => ({ ...f, placeholder: false })),
-          // Load existing lyrics
-          lyrics: (hymn.lyrics || []).map(l => ({
-            id: l.id,
-            language: l.language || 'ar',
-            content: l.content || '',
-            verseOrder: l.verseOrder ?? 0
-          })),
+          // Load existing lyric content (single lyric per hymn)
+          lyricContent: hymn.lyric?.content || '',
           pendingTagNames: []
         });
       }
@@ -283,22 +278,9 @@ const HymnForm = () => {
         hymnId = created.id;
       }
 
-      // Save lyrics using bulk upsert
-      if (formData.lyrics.length > 0 && hymnId) {
-        const lyricsToSave = formData.lyrics
-          .filter(l => l.content && l.content.trim())
-          .map((l, idx) => ({
-            language: l.language || 'ar',
-            content: l.content,
-            verseOrder: l.verseOrder ?? idx
-          }));
-        
-        if (lyricsToSave.length > 0) {
-          await LyricService.bulkUpsert(hymnId, lyricsToSave);
-        }
-      } else if (isEditing && formData.lyrics.length === 0) {
-        // If editing and all lyrics were removed, clear them
-        await LyricService.bulkUpsert(hymnId, []);
+      // Save lyric content using upsert
+      if (hymnId) {
+        await LyricService.upsert(hymnId, formData.lyricContent || '');
       }
 
       navigate('/hymns');
@@ -457,8 +439,8 @@ const HymnForm = () => {
 
         {/* Lyrics */}
         <LyricEditor
-          lyrics={formData.lyrics}
-          onChange={(updatedLyrics) => setFormData(prev => ({ ...prev, lyrics: updatedLyrics }))}
+          content={formData.lyricContent}
+          onChange={(content) => setFormData(prev => ({ ...prev, lyricContent: content }))}
         />
 
         {/* Submit Button */}
@@ -483,4 +465,4 @@ const HymnForm = () => {
   );
 };
 
-export default HymnForm; 
+export default HymnForm;

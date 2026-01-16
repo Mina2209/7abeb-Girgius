@@ -84,7 +84,7 @@ const HymnList = () => {
           normTerm === "" ||
           normalizeArabic(hymn.title).includes(normTerm) ||
           hymn.tags.some((tag) => normalizeArabic(tag.name).includes(normTerm)) ||
-          (hymn.lyrics && hymn.lyrics.some((lyric) => normalizeArabic(lyric.content || "").includes(normTerm)));
+          (hymn.lyric?.content && normalizeArabic(hymn.lyric.content).includes(normTerm));
 
         // Tags filter
         const matchesTags =
@@ -400,20 +400,15 @@ const HymnList = () => {
                 )}
 
                 {/* Lyrics Preview */}
-                {hymn.lyrics && hymn.lyrics.length > 0 && (
+                {hymn.lyric?.content && (
                   <div className="mt-3">
                     <span className="text-sm font-medium text-gray-700">
                       الكلمات:
                     </span>
                     <div className="mt-1 text-sm text-gray-600 bg-gray-50 rounded-md p-2 max-h-20 overflow-hidden">
-                      {hymn.lyrics[0]?.content?.substring(0, 100)}
-                      {hymn.lyrics[0]?.content?.length > 100 && '...'}
+                      {hymn.lyric.content.substring(0, 100)}
+                      {hymn.lyric.content.length > 100 && '...'}
                     </div>
-                    {hymn.lyrics.length > 1 && (
-                      <span className="text-xs text-gray-500 mt-1">
-                        +{hymn.lyrics.length - 1} نسخة أخرى
-                      </span>
-                    )}
                   </div>
                 )}
               </div>

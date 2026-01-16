@@ -11,9 +11,7 @@ router.get('/hymn/:hymnId', LyricController.getByHymnId);
 router.get('/:id', LyricController.getById);
 
 // Protected routes - require authentication and editor/admin role
-router.post('/', authenticate, requireEditor, LyricController.create);
-router.put('/hymn/:hymnId/bulk', authenticate, requireEditor, LyricController.bulkUpsert);
-router.put('/:id', authenticate, requireEditor, LyricController.update);
-router.delete('/:id', authenticate, requireEditor, LyricController.delete);
+router.put('/hymn/:hymnId', authenticate, requireEditor, LyricController.upsert);
+router.delete('/hymn/:hymnId', authenticate, requireEditor, LyricController.deleteByHymnId);
 
 export default router;

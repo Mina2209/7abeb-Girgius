@@ -38,9 +38,7 @@ async function main() {
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 289 },
         { type: FileType.POWERPOINT, fileUrl: 'blabla' }
       ],
-      lyrics: [
-        { language: 'ar', content: 'أصليله أصليله\nأسلمله حياتي كلها\nأصليله أصليله\nوأخليه يرتب أموري', verseOrder: 0 }
-      ]
+      lyricContent: 'أصليله أصليله\nأسلمله حياتي كلها\nأصليله أصليله\nوأخليه يرتب أموري'
     },
     {
       title: 'أعروس الفادى القبطية',
@@ -50,9 +48,7 @@ async function main() {
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 284 },
         { type: FileType.POWERPOINT, fileUrl: 'blabla' }
       ],
-      lyrics: [
-        { language: 'ar', content: 'أعروس الفادي القبطية\nيا كنيستي يا أرثوذكسية\nمهما الزمن طال عليكي\nباقي مسيحك فاديكي', verseOrder: 0 }
-      ]
+      lyricContent: 'أعروس الفادي القبطية\nيا كنيستي يا أرثوذكسية\nمهما الزمن طال عليكي\nباقي مسيحك فاديكي'
     },
     {
       title: 'احكى يا تاريخ',
@@ -62,9 +58,7 @@ async function main() {
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 208 },
         { type: FileType.POWERPOINT, fileUrl: 'blabla' }
       ],
-      lyrics: [
-        { language: 'ar', content: 'احكي يا تاريخ عن أمجادي\nعن إيماني وعن أجدادي\nعن شهداء قدموا حياتهم\nفداء لإيمانهم وكنيستهم', verseOrder: 0 }
-      ]
+      lyricContent: 'احكي يا تاريخ عن أمجادي\nعن إيماني وعن أجدادي\nعن شهداء قدموا حياتهم\nفداء لإيمانهم وكنيستهم'
     },
     {
       title: 'احلى ما فى حياتى انت',
@@ -74,9 +68,7 @@ async function main() {
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 199 },
         { type: FileType.POWERPOINT, fileUrl: 'blabla' }
       ],
-      lyrics: [
-        { language: 'ar', content: 'أحلى ما في حياتي انت\nأغلى ما في قلبي انت\nيا يسوع حبيبي انت\nكل عمري ليك انت', verseOrder: 0 }
-      ]
+      lyricContent: 'أحلى ما في حياتي انت\nأغلى ما في قلبي انت\nيا يسوع حبيبي انت\nكل عمري ليك انت'
     },
     {
       title: 'اختبرتنى الهى',
@@ -86,9 +78,7 @@ async function main() {
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 253 },
         { type: FileType.POWERPOINT, fileUrl: 'blabla' }
       ],
-      lyrics: [
-        { language: 'ar', content: 'اختبرتني إلهي\nوعرفت كل أفكاري\nسابقتني محبتك\nوملكت على قلبي', verseOrder: 0 }
-      ]
+      lyricContent: 'اختبرتني إلهي\nوعرفت كل أفكاري\nسابقتني محبتك\nوملكت على قلبي'
     },
     {
       title: 'ارضى افرحى',
@@ -98,9 +88,7 @@ async function main() {
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 225 },
         { type: FileType.POWERPOINT, fileUrl: 'blabla' }
       ],
-      lyrics: [
-        { language: 'ar', content: 'ارضي افرحي يا بيت لحم\nميلاد المسيح فيكي تم\nنجمة في السما ظهرت\nوعلى المغارة استقرت', verseOrder: 0 }
-      ]
+      lyricContent: 'ارضي افرحي يا بيت لحم\nميلاد المسيح فيكي تم\nنجمة في السما ظهرت\nوعلى المغارة استقرت'
     }
   ];
 
@@ -109,7 +97,7 @@ async function main() {
       data: {
         title: hymn.title,
         files: { create: hymn.files },
-        lyrics: hymn.lyrics ? { create: hymn.lyrics } : undefined,
+        lyric: hymn.lyricContent ? { create: { content: hymn.lyricContent } } : undefined,
         tags: {
           connectOrCreate: hymn.tags.map(tag => ({
             where: { name: tag },

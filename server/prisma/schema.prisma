@@ -12,7 +12,7 @@ model Hymn {
   title      String
   tags       Tag[]
   files      File[]
-  lyrics     Lyric[]
+  lyric      Lyric?   // One-to-one optional relation
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -20,14 +20,10 @@ model Hymn {
 model Lyric {
   id         String   @id @default(uuid())
   hymn       Hymn     @relation(fields: [hymnId], references: [id], onDelete: Cascade)
-  hymnId     String
-  language   String   @default("ar")
+  hymnId     String   @unique  // One lyric per hymn
   content    String   @db.Text
-  verseOrder Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  @@index([hymnId])
 }
 
 model Saying {
