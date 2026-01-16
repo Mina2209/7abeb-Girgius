@@ -22,8 +22,8 @@ function parseDatabaseUrl() {
   if (!match) throw new Error('Invalid DATABASE_URL format');
   
   return {
-    user: match[1],
-    password: match[2],
+    user: decodeURIComponent(match[1]),
+    password: decodeURIComponent(match[2]), // Decode URL-encoded password
     host: match[3],
     port: match[4],
     database: match[5].split('?')[0] // Remove query params if any
