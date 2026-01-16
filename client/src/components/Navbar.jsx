@@ -132,6 +132,13 @@ const Navbar = () => {
                       >
                         Activity Logs
                       </Link>
+                      <Link
+                        to="/admin/backup"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Backup Management
+                      </Link>
                       <div className="border-t border-gray-200 my-1"></div>
                     </>
                   )}
@@ -299,6 +306,15 @@ const Navbar = () => {
                         className="block px-4 py-3 hover:bg-blue-700/50"
                       >
                         Activity Logs
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to="/admin/backup"
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 hover:bg-blue-700/50"
+                      >
+                        Backup Management
                       </Link>
                     </li>
                   </>

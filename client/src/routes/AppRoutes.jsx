@@ -17,6 +17,7 @@ import SermonsPage from '../pages/SermonsPage';
 import ProgramsPage from '../pages/ProgramsPage';
 import UserManagement from '../pages/admin/UserManagement';
 import LogViewer from '../pages/admin/LogViewer';
+import BackupManagement from '../pages/admin/BackupManagement';
 
 // Protected route wrapper for authenticated users
 function ProtectedRoute({ children }) {
@@ -69,6 +70,7 @@ export default function AppRoutes() {
             {/* Admin routes */}
             <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
             <Route path="/admin/logs" element={<AdminRoute><LogViewer /></AdminRoute>} />
+            <Route path="/admin/backup" element={<AdminRoute><BackupManagement /></AdminRoute>} />
         </Routes>
     );
 }

@@ -9,6 +9,8 @@ import sayingRoutes from './routes/saying.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import lyricRoutes from './routes/lyric.routes.js';
+import backupRoutes from './routes/backup.routes.js';
+import { BackupScheduler } from './services/backup.scheduler.js';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -23,6 +25,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/sayings', sayingRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/lyrics', lyricRoutes);
+app.use('/api/backup', backupRoutes);
 
 // note: uploads are served from S3 via presigned URLs; no local static serving
 
@@ -41,6 +44,12 @@ async function main() {
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
+      
+      // Start automatic backup scheduler (every 24 hours, keep 7 backups)
+      // Only start in production or if ENABLE_BACKUP_SCHEDULER is set
+      if (process.env.NODE_ENV === 'production' || process.env.ENABLE_BACKUP_SCHEDULER === 'true') {
+        BackupScheduler.start(24, 7);
+      }
     });
   } catch (err) {
     console.error('Failed to start server due to database connection error:', err);

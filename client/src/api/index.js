@@ -7,9 +7,10 @@ export * from './uploadService';
 export * from './tagService';
 export * from './sayingService';
 export * from './lyricService';
+export * from './backupService';
 
 // Provide a named `uploadService` export (convenience wrapper around default export)
 import uploadServiceDefault from './uploadService';
 export { uploadServiceDefault as uploadService };
 
-// Note: prefer importing named services: `import { HymnService, TagService, LyricService } from 'src/api'`
+// Note: prefer importing named services: `import { HymnService, TagService, LyricService, BackupService } from 'src/api'`
