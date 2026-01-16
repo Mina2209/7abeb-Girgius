@@ -7,7 +7,7 @@
 
 */
 -- DropIndex
-DROP INDEX "public"."Lyric_hymnId_idx";
+-- DROP INDEX "public"."Lyric_hymnId_idx";
 
 -- AlterTable
 ALTER TABLE "public"."Lyric" DROP COLUMN "language",
