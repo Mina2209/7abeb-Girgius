@@ -8,7 +8,6 @@ const mimeToType = (mime) => {
   if (mime.startsWith('video/')) return 'VIDEO_MONTAGE';
   if (mime.startsWith('audio/')) return 'MUSIC_AUDIO';
   if (mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || mime === 'application/vnd.ms-powerpoint') return 'POWERPOINT';
-  if (mime === 'application/msword' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'WORD_DOCUMENT';
   return null;
 };
 
@@ -169,19 +168,13 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
       {/* Details column */}
       <div className="flex-1 flex flex-col sm:flex-row items-center gap-3">
         <div className="flex-1 min-w-[180px]">
-          {/* Type selector / display */}
-          {autoType && autoType.startsWith('VIDEO') ? (
-            <select value={value.type || autoType || ''} onChange={handleTypeChange} className="px-3 py-2 border rounded-md w-full">
-              <option value="" disabled>اختر نوع</option>
-              {FILE_TYPES.filter(ft => ft.value.startsWith('VIDEO')).map(ft => (
-                <option key={ft.value} value={ft.value}>{ft.label}</option>
-              ))}
-            </select>
-          ) : (
-            <select value={value.type || autoType || ''} disabled className="px-3 py-2 border rounded-md bg-gray-100 w-full">
-              <option value="">{value.type || autoType || 'غير محدد'}</option>
-            </select>
-          )}
+          {/* Type selector - always editable */}
+          <select value={value.type || autoType || ''} onChange={handleTypeChange} className="px-3 py-2 border rounded-md w-full">
+            <option value="" disabled>اختر نوع</option>
+            {FILE_TYPES.map(ft => (
+              <option key={ft.value} value={ft.value}>{ft.label}</option>
+            ))}
+          </select>
         </div>
 
         {/* File details: shown only when a file exists */}

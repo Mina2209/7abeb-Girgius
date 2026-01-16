@@ -1,12 +1,22 @@
 import { API_BASE } from '../config/apiConfig';
 
+// Helper to get auth headers
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 // Helper for upload-related API calls (presign, delete)
 export async function presign(filename, contentType, folderOrType) {
   const body = { filename, contentType };
   if (folderOrType) body.folder = folderOrType;
   const res = await fetch(`${API_BASE}/uploads/presign`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('Failed to get presigned url');
@@ -19,7 +29,7 @@ export async function initiateMultipart(filename, contentType, folderOrType) {
   if (folderOrType) body.folder = folderOrType;
   const res = await fetch(`${API_BASE}/uploads/multipart/initiate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('Failed to initiate multipart');
@@ -29,7 +39,7 @@ export async function initiateMultipart(filename, contentType, folderOrType) {
 export async function presignPart({ key, uploadId, partNumber }) {
   const res = await fetch(`${API_BASE}/uploads/multipart/presign-part`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ key, uploadId, partNumber }),
   });
   if (!res.ok) throw new Error('Failed to presign part');
@@ -39,7 +49,7 @@ export async function presignPart({ key, uploadId, partNumber }) {
 export async function completeMultipart({ key, uploadId, parts }) {
   const res = await fetch(`${API_BASE}/uploads/multipart/complete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ key, uploadId, parts }),
   });
   if (!res.ok) throw new Error('Failed to complete multipart');
@@ -49,7 +59,7 @@ export async function completeMultipart({ key, uploadId, parts }) {
 export async function abortMultipart({ key, uploadId }) {
   const res = await fetch(`${API_BASE}/uploads/multipart/abort`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ key, uploadId }),
   });
   if (!res.ok) throw new Error('Failed to abort multipart');
@@ -112,8 +122,14 @@ export async function uploadLargeFile(file, onProgress = () => {}, folderOrType)
 }
 
 export async function deleteKey(key) {
+  const token = localStorage.getItem('authToken');
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   const res = await fetch(`${API_BASE}/uploads/${encodeURIComponent(key)}`, {
     method: 'DELETE',
+    headers,
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => null);

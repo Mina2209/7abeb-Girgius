@@ -4,8 +4,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Create default admin user
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const editorPassword = await bcrypt.hash('editor123', 10);
+  const adminPassword = await bcrypt.hash('TEmPpasSWordFoRaDMin12e4##', 10);
+  const editorPassword = await bcrypt.hash('TEmPpasSWordFoRaDMin12e4##', 10);
   
   await prisma.user.upsert({
     where: { username: 'admin' },
@@ -27,7 +27,7 @@ async function main() {
     }
   });
 
-  console.log('Default users created: admin/admin123 and editor/editor123');
+  console.log('Default users created: admin/TEmPpasSWordFoRaDMin12e4## and editor/TEmPpasSWordFoRaDMin12e4##');
 
   const hymns = [
     {
@@ -36,8 +36,10 @@ async function main() {
       files: [
         { type: FileType.VIDEO_MONTAGE, fileUrl: 'blabla', duration: 289 },
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 289 },
-        { type: FileType.POWERPOINT, fileUrl: 'blabla' },
-        { type: FileType.WORD_DOCUMENT, fileUrl: 'blabla' }
+        { type: FileType.POWERPOINT, fileUrl: 'blabla' }
+      ],
+      lyrics: [
+        { language: 'ar', content: 'أصليله أصليله\nأسلمله حياتي كلها\nأصليله أصليله\nوأخليه يرتب أموري', verseOrder: 0 }
       ]
     },
     {
@@ -46,8 +48,10 @@ async function main() {
       files: [
         { type: FileType.VIDEO_MONTAGE, fileUrl: 'blabla', duration: 284 },
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 284 },
-        { type: FileType.POWERPOINT, fileUrl: 'blabla' },
-        { type: FileType.WORD_DOCUMENT, fileUrl: 'blabla' }
+        { type: FileType.POWERPOINT, fileUrl: 'blabla' }
+      ],
+      lyrics: [
+        { language: 'ar', content: 'أعروس الفادي القبطية\nيا كنيستي يا أرثوذكسية\nمهما الزمن طال عليكي\nباقي مسيحك فاديكي', verseOrder: 0 }
       ]
     },
     {
@@ -56,8 +60,10 @@ async function main() {
       files: [
         { type: FileType.VIDEO_MONTAGE, fileUrl: 'blabla', duration: 208 },
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 208 },
-        { type: FileType.POWERPOINT, fileUrl: 'blabla' },
-        { type: FileType.WORD_DOCUMENT, fileUrl: 'blabla' }
+        { type: FileType.POWERPOINT, fileUrl: 'blabla' }
+      ],
+      lyrics: [
+        { language: 'ar', content: 'احكي يا تاريخ عن أمجادي\nعن إيماني وعن أجدادي\nعن شهداء قدموا حياتهم\nفداء لإيمانهم وكنيستهم', verseOrder: 0 }
       ]
     },
     {
@@ -66,8 +72,10 @@ async function main() {
       files: [
         { type: FileType.VIDEO_MONTAGE, fileUrl: 'blabla', duration: 199 },
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 199 },
-        { type: FileType.POWERPOINT, fileUrl: 'blabla' },
-        { type: FileType.WORD_DOCUMENT, fileUrl: 'blabla' }
+        { type: FileType.POWERPOINT, fileUrl: 'blabla' }
+      ],
+      lyrics: [
+        { language: 'ar', content: 'أحلى ما في حياتي انت\nأغلى ما في قلبي انت\nيا يسوع حبيبي انت\nكل عمري ليك انت', verseOrder: 0 }
       ]
     },
     {
@@ -76,8 +84,10 @@ async function main() {
       files: [
         { type: FileType.VIDEO_MONTAGE, fileUrl: 'blabla', duration: 253 },
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 253 },
-        { type: FileType.POWERPOINT, fileUrl: 'blabla' },
-        { type: FileType.WORD_DOCUMENT, fileUrl: 'blabla' }
+        { type: FileType.POWERPOINT, fileUrl: 'blabla' }
+      ],
+      lyrics: [
+        { language: 'ar', content: 'اختبرتني إلهي\nوعرفت كل أفكاري\nسابقتني محبتك\nوملكت على قلبي', verseOrder: 0 }
       ]
     },
     {
@@ -86,8 +96,10 @@ async function main() {
       files: [
         { type: FileType.VIDEO_MONTAGE, fileUrl: 'blabla', duration: 225 },
         { type: FileType.MUSIC_AUDIO, fileUrl: 'blabla', duration: 225 },
-        { type: FileType.POWERPOINT, fileUrl: 'blabla' },
-        { type: FileType.WORD_DOCUMENT, fileUrl: 'blabla' }
+        { type: FileType.POWERPOINT, fileUrl: 'blabla' }
+      ],
+      lyrics: [
+        { language: 'ar', content: 'ارضي افرحي يا بيت لحم\nميلاد المسيح فيكي تم\nنجمة في السما ظهرت\nوعلى المغارة استقرت', verseOrder: 0 }
       ]
     }
   ];
@@ -97,6 +109,7 @@ async function main() {
       data: {
         title: hymn.title,
         files: { create: hymn.files },
+        lyrics: hymn.lyrics ? { create: hymn.lyrics } : undefined,
         tags: {
           connectOrCreate: hymn.tags.map(tag => ({
             where: { name: tag },

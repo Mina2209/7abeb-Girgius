@@ -3,7 +3,6 @@ export const FILE_TYPES = [
   { value: 'VIDEO_POWERPOINT', label: 'Video PowerPoint' },
   { value: 'POWERPOINT', label: 'PowerPoint' },
   { value: 'MUSIC_AUDIO', label: 'Music Audio' },
-  { value: 'WORD_DOCUMENT', label: 'Word Document' },
 ];
 
 export const TYPE_PRIORITY = {
@@ -11,5 +10,4 @@ export const TYPE_PRIORITY = {
   VIDEO_POWERPOINT: 2,
   POWERPOINT: 3,
   MUSIC_AUDIO: 4,
-  WORD_DOCUMENT: 5,
 };

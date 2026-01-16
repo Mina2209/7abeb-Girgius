@@ -7,14 +7,14 @@ const prisma = new PrismaClient();
 export const HymnService = {
   getAll: async () => {
     return prisma.hymn.findMany({
-      include: { tags: true, files: true }
+      include: { tags: true, files: true, lyrics: true }
     });
   },
 
   getById: async (id) => {
     return prisma.hymn.findUnique({
       where: { id },
-      include: { tags: true, files: true }
+      include: { tags: true, files: true, lyrics: true }
     });
   },
 
@@ -32,7 +32,7 @@ export const HymnService = {
             }
           : undefined
       },
-      include: { tags: true, files: true }
+      include: { tags: true, files: true, lyrics: true }
     });
   },
 
@@ -58,7 +58,7 @@ export const HymnService = {
             : {})
         }
       },
-      include: { tags: true, files: true }
+      include: { tags: true, files: true, lyrics: true }
     });
   },
 

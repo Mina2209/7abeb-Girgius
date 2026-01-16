@@ -12,8 +12,22 @@ model Hymn {
   title      String
   tags       Tag[]
   files      File[]
+  lyrics     Lyric[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model Lyric {
+  id         String   @id @default(uuid())
+  hymn       Hymn     @relation(fields: [hymnId], references: [id], onDelete: Cascade)
+  hymnId     String
+  language   String   @default("ar")
+  content    String   @db.Text
+  verseOrder Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([hymnId])
 }
 
 model Saying {
@@ -53,7 +67,6 @@ enum FileType {
   VIDEO_POWERPOINT
   POWERPOINT
   MUSIC_AUDIO
-  WORD_DOCUMENT
 }
 
 model User {

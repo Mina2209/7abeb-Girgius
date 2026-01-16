@@ -8,6 +8,7 @@ import tagRoutes from './routes/tag.routes.js';
 import sayingRoutes from './routes/saying.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import lyricRoutes from './routes/lyric.routes.js';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -21,6 +22,7 @@ app.use('/api/hymns', hymnRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/sayings', sayingRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/lyrics', lyricRoutes);
 
 // note: uploads are served from S3 via presigned URLs; no local static serving
 

@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useHymns } from '../../contexts/HymnContext';
 import { useTags } from '../../contexts/TagContext';
-import { uploadService } from '../../api';
+import { uploadService, LyricService } from '../../api';
 import { API_BASE } from '../../config/apiConfig';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 // import { normalizeArabic } from '../../utils/normalizeArabic';
 import TagMultiSelect from '../../components/TagMultiSelect';
 // import { FILE_TYPES } from '../../constants/fileTypes';
 import FilePicker from '../../components/FilePicker';
+import LyricEditor from '../../components/LyricEditor';
 import { parseOptionalInt } from '../../utils/formatters';
 
 const HymnForm = () => {
@@ -21,6 +22,7 @@ const HymnForm = () => {
     title: '',
     tags: [],
     files: [{ type: '', fileUrl: '', size: '', duration: '', placeholder: true }],
+    lyrics: [],
     pendingTagNames: []
   });
 
@@ -40,6 +42,13 @@ const HymnForm = () => {
           tags: hymn.tags ? hymn.tags.map(t => t.id) : [],
           // preserve existing files and ensure we don't carry placeholder flags
           files: (hymn.files || []).map(f => ({ ...f, placeholder: false })),
+          // Load existing lyrics
+          lyrics: (hymn.lyrics || []).map(l => ({
+            id: l.id,
+            language: l.language || 'ar',
+            content: l.content || '',
+            verseOrder: l.verseOrder ?? 0
+          })),
           pendingTagNames: []
         });
       }
@@ -266,10 +275,30 @@ const HymnForm = () => {
           }))
       };
 
+      let hymnId = id;
       if (isEditing) {
         await updateHymn(id, hymnData);
       } else {
-        await createHymn(hymnData);
+        const created = await createHymn(hymnData);
+        hymnId = created.id;
+      }
+
+      // Save lyrics using bulk upsert
+      if (formData.lyrics.length > 0 && hymnId) {
+        const lyricsToSave = formData.lyrics
+          .filter(l => l.content && l.content.trim())
+          .map((l, idx) => ({
+            language: l.language || 'ar',
+            content: l.content,
+            verseOrder: l.verseOrder ?? idx
+          }));
+        
+        if (lyricsToSave.length > 0) {
+          await LyricService.bulkUpsert(hymnId, lyricsToSave);
+        }
+      } else if (isEditing && formData.lyrics.length === 0) {
+        // If editing and all lyrics were removed, clear them
+        await LyricService.bulkUpsert(hymnId, []);
       }
 
       navigate('/hymns');
@@ -425,6 +454,12 @@ const HymnForm = () => {
             </div>
           )}
         </div>
+
+        {/* Lyrics */}
+        <LyricEditor
+          lyrics={formData.lyrics}
+          onChange={(updatedLyrics) => setFormData(prev => ({ ...prev, lyrics: updatedLyrics }))}
+        />
 
         {/* Submit Button */}
         <div className="flex justify-end space-x-3 space-x-reverse">
