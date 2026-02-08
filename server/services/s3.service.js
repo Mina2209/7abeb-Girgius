@@ -1,18 +1,17 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Sanitize filename for S3 - allow Unicode characters (Arabic, etc.)
-// Only remove characters that are problematic for URLs/file systems
+// Sanitize filename for S3 keys - use ASCII-safe characters
+// S3 presigned URLs can have issues with Unicode in keys
 function sanitizeFilename(name) {
-  // Remove or replace problematic characters:
-  // - Control characters (0x00-0x1F, 0x7F)
-  // - Characters problematic for URLs/file systems: / \ : * ? " < > |
-  // - Leading/trailing spaces and dots
+  // For S3 key safety, replace non-ASCII and problematic characters
+  // This ensures the presigned URL signing works correctly
   return name
-    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
-    .replace(/[\/\\:*?"<>|]/g, '_')  // Replace problematic chars with underscore
-    .replace(/^[\s.]+|[\s.]+$/g, '') // Trim spaces and dots from ends
-    .replace(/\s+/g, '_');           // Replace spaces with underscores (optional, for cleaner URLs)
+    .replace(/[^\x20-\x7E]/g, '_')     // Replace non-ASCII chars with underscore
+    .replace(/[\/\\:*?"<>|]/g, '_')    // Replace problematic chars with underscore
+    .replace(/^[\s.]+|[\s.]+$/g, '')   // Trim spaces and dots from ends
+    .replace(/\s+/g, '_')              // Replace spaces with underscores
+    .replace(/_+/g, '_');              // Collapse multiple underscores
 }
 
 // Extract the original filename from an S3 key
@@ -73,8 +72,12 @@ export function createS3Service({ region, bucket, prefix = 'Uploads/' } = {}) {
       const commandOptions = { Bucket: bucket, Key: key };
 
       // Set Content-Disposition to force the correct filename on download
+      // Use RFC 5987 encoding for Unicode filenames (Arabic, etc.)
       if (downloadFilename) {
-        commandOptions.ResponseContentDisposition = `attachment; filename="${downloadFilename}"`;
+        // Encode filename for Content-Disposition header (handles Unicode)
+        const encodedFilename = encodeURIComponent(downloadFilename).replace(/'/g, '%27');
+        // Use both filename (ASCII fallback) and filename* (UTF-8) for compatibility
+        commandOptions.ResponseContentDisposition = `attachment; filename="${downloadFilename.replace(/[^\x20-\x7E]/g, '_')}"; filename*=UTF-8''${encodedFilename}`;
       }
 
       const command = new GetObjectCommand(commandOptions);
