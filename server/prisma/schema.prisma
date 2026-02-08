@@ -48,14 +48,15 @@ model Tag {
 }
 
 model File {
-  id        String   @id @default(uuid())
-  hymn      Hymn     @relation(fields: [hymnId], references: [id], onDelete: Cascade)
-  hymnId    String
-  type      FileType
-  fileUrl   String
-  size      Int?
-  duration  Int?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  hymn         Hymn     @relation(fields: [hymnId], references: [id], onDelete: Cascade)
+  hymnId       String
+  type         FileType
+  fileUrl      String
+  originalName String?  // Original filename (including Unicode chars like Arabic)
+  size         Int?
+  duration     Int?
+  createdAt    DateTime @default(now())
 }
 
 enum FileType {

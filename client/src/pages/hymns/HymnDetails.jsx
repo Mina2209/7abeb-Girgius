@@ -27,9 +27,15 @@ const FILE_ICONS = {
     OTHER: DocumentIcon
 };
 
-// Extract original filename from S3 key
-// Keys are formatted as: prefix/timestamp-random-originalFilename
-function extractOriginalFilename(fileUrl) {
+// Get display filename - prefer database's originalName, fallback to URL extraction
+function getDisplayFilename(file) {
+    // If we have originalName from database, use it (this preserves Arabic chars)
+    if (file.originalName) {
+        return file.originalName;
+    }
+
+    // Fallback: extract from URL/S3 key
+    const fileUrl = file.fileUrl;
     if (!fileUrl) return 'file';
     try {
         // Extract key from URL like /api/uploads/url?key=...
@@ -176,7 +182,7 @@ const HymnDetails = () => {
                                                         </div>
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 transition-colors truncate">
-                                                                {extractOriginalFilename(file.fileUrl)}
+                                                                {getDisplayFilename(file)}
                                                             </p>
                                                             <p className="text-xs text-slate-400 font-mono">
                                                                 {file.type} • {formatSize(file.size)}
@@ -188,24 +194,15 @@ const HymnDetails = () => {
                                                         type="button"
                                                         className="p-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors flex-shrink-0"
                                                         title="تحميل الملف"
-                                                        onClick={async () => {
-                                                            try {
-                                                                // Fetch the file as blob for cross-origin download
-                                                                const response = await fetch(file.fileUrl);
-                                                                const blob = await response.blob();
-                                                                const url = window.URL.createObjectURL(blob);
-                                                                const link = document.createElement('a');
-                                                                link.href = url;
-                                                                link.download = extractOriginalFilename(file.fileUrl);
-                                                                document.body.appendChild(link);
-                                                                link.click();
-                                                                document.body.removeChild(link);
-                                                                window.URL.revokeObjectURL(url);
-                                                            } catch (err) {
-                                                                console.error('Download failed:', err);
-                                                                // Fallback: open in new tab
-                                                                window.open(file.fileUrl, '_blank');
-                                                            }
+                                                        onClick={() => {
+                                                            // The server redirects to S3 with Content-Disposition header set
+                                                            const link = document.createElement('a');
+                                                            link.href = file.fileUrl;
+                                                            link.target = '_blank';
+                                                            link.rel = 'noopener noreferrer';
+                                                            document.body.appendChild(link);
+                                                            link.click();
+                                                            document.body.removeChild(link);
                                                         }}
                                                     >
                                                         <ArrowDownTrayIcon className="w-5 h-5" />
@@ -254,7 +251,7 @@ const HymnDetails = () => {
                 </div>
 
             </div>
-        </div>
+        </div >
     );
 };
 

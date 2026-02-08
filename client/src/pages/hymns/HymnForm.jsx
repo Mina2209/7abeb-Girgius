@@ -172,6 +172,7 @@ const HymnForm = () => {
               const newFileEntry = {
                 type: f.type || f.fileObject.type,
                 fileUrl: result.fileUrl,
+                originalName: result.filename, // Original filename with Unicode chars
                 size: parseInt(result.size),
                 duration: parseOptionalInt(f.duration)
               };
@@ -315,6 +316,7 @@ const HymnForm = () => {
           return {
             type: finalType,
             fileUrl: f.fileUrl,
+            originalName: f.originalName, // Preserve original filename
             size: parseInt(f.size || 0),
             duration: parseInt(f.duration || 0) || null
           };
@@ -357,6 +359,7 @@ const HymnForm = () => {
                 const newFileEntry = {
                   type: getFileTypeEnum(f.type || f.fileObject.type), // Map new upload type
                   fileUrl: result.fileUrl,
+                  originalName: result.filename, // Original filename with Unicode chars
                   size: parseInt(result.size),
                   duration: parseOptionalInt(f.duration)
                 };
@@ -376,6 +379,7 @@ const HymnForm = () => {
                     return {
                       type: mappedType,
                       fileUrl: f.fileUrl,
+                      originalName: f.originalName, // Preserve original filename
                       size: f.size,
                       duration: parseInt(f.duration || 0) || null
                     };
