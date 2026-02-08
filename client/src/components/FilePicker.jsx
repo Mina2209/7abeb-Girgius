@@ -11,13 +11,13 @@ const mimeToType = (mime) => {
   return null;
 };
 
-const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, index, placeholder = false, onActivate = () => {}, uploadType = null }) => {
+const FilePicker = ({ value = {}, onChange = () => { }, onRemove = () => { }, index, placeholder = false, onActivate = () => { }, uploadType = null }) => {
   const inputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(value.fileUrl || '');
   const [autoType, setAutoType] = useState(value.type || '');
   const [autoFilled, setAutoFilled] = useState({ type: false, size: false, duration: false });
   const [filename, setFilename] = useState(value.fileName || '');
-  
+
 
   const openFileDialog = () => {
     // If this is a placeholder slot, notify parent to activate it (remove fade and provide a new placeholder)
@@ -133,12 +133,12 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
   };
 
   return (
-    <div className={`relative flex flex-col sm:flex-row items-start gap-3 p-3 border border-gray-200 rounded-md transition-all duration-200 ${placeholder ? 'opacity-40 hover:opacity-95 cursor-pointer bg-gray-50 shadow-sm' : 'bg-white hover:shadow'} `}>
+    <div className={`relative flex flex-col sm:flex-row items-start gap-3 p-3 border border-gray-200 dark:border-slate-700 rounded-md transition-all duration-200 ${placeholder ? 'opacity-40 hover:opacity-95 cursor-pointer bg-gray-50 dark:bg-slate-800/50 shadow-sm' : 'bg-white dark:bg-slate-800 hover:shadow'} `}>
       {/* Trash / remove icon at top-right */}
       <button
         type="button"
         onClick={() => onRemove(index)}
-        className="absolute -top-2 -right-2 bg-white border rounded-full p-1 shadow hover:bg-red-50 text-red-600 z-10"
+        className="absolute -top-2 -right-2 bg-white dark:bg-slate-700 border dark:border-slate-600 rounded-full p-1 shadow hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 z-10"
         aria-label="Remove file slot"
       >
         <XMarkIcon className="h-4 w-4" />
@@ -147,7 +147,7 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
 
       {/* Preview column */}
       <div className="w-full sm:w-80 flex-shrink-0">
-        <button type="button" onClick={openFileDialog} className="w-full px-3 py-2 bg-blue-100 text-blue-700 rounded-md">اختر ملف</button>
+        <button type="button" onClick={openFileDialog} className="w-full px-3 py-2 bg-blue-100 dark:bg-slate-700 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-slate-600 transition-colors">اختر ملف</button>
         {previewUrl && (
           <div className="mt-2">
             {autoType && autoType.startsWith('VIDEO') ? (
@@ -161,38 +161,38 @@ const FilePicker = ({ value = {}, onChange = () => {}, onRemove = () => {}, inde
             )}
           </div>
         )}
-        {filename && <div className="text-xs text-gray-600 mt-2 truncate">{filename}</div>}
-        
+        {filename && <div className="text-xs text-gray-600 dark:text-gray-400 mt-2 truncate">{filename}</div>}
+
       </div>
 
       {/* Details column */}
       <div className="flex-1 flex flex-col sm:flex-row items-center gap-3">
         <div className="flex-1 min-w-[180px]">
           {/* Type selector - always editable */}
-          <select value={value.type || autoType || ''} onChange={handleTypeChange} className="px-3 py-2 border rounded-md w-full">
+          <select value={value.type || autoType || ''} onChange={handleTypeChange} className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md w-full bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
             <option value="" disabled>اختر نوع</option>
             {FILE_TYPES.map(ft => (
-              <option key={ft.value} value={ft.value}>{ft.label}</option>
+              <option key={ft.value} value={ft.value} className="dark:bg-slate-700">{ft.label}</option>
             ))}
           </select>
         </div>
 
         {/* File details: shown only when a file exists */}
-        { (value.fileUrl || filename) && (
+        {(value.fileUrl || filename) && (
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-            <div className="text-xs text-gray-500 mr-1">معلومات الملف</div>
-            <div className="w-full sm:w-36 text-sm text-gray-700">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mr-1">معلومات الملف</div>
+            <div className="w-full sm:w-36 text-sm text-gray-700 dark:text-gray-300">
               <div>{value.size ? formatBytes(value.size) : '-'}</div>
             </div>
 
-            { (value.type && (value.type.startsWith('VIDEO') || value.type === 'MUSIC_AUDIO')) || !!value.duration ? (
-              <div className="w-full sm:w-36 text-sm text-gray-700">
-                <div className="text-xs text-gray-500 mb-1">المدة</div>
+            {(value.type && (value.type.startsWith('VIDEO') || value.type === 'MUSIC_AUDIO')) || !!value.duration ? (
+              <div className="w-full sm:w-36 text-sm text-gray-700 dark:text-gray-300">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">المدة</div>
                 <div>{value.duration ? formatDuration(value.duration) : '-'}</div>
               </div>
-            ) : null }
+            ) : null}
           </div>
-        ) }
+        )}
 
         <div>
           {/* empty space kept for layout consistency */}

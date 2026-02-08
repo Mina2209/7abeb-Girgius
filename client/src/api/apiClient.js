@@ -23,14 +23,26 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Handle 401 errors by clearing auth
+// Handle 401 errors by dispatching event (not hard redirect)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
-      window.location.href = '/login';
+      const currentToken = localStorage.getItem('authToken');
+      const failedTokenHeader = error.config?.headers?.Authorization || error.config?.headers?.authorization;
+
+      // Only clear session if the failing request used the CURRENT token
+      // This prevents background requests from old sessions from killing the new one
+      const isCurrentSession = !currentToken || (failedTokenHeader && failedTokenHeader === `Bearer ${currentToken}`);
+
+      if (isCurrentSession) {
+        // Clear stored auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+
+        // Dispatch custom event for AuthContext to handle
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
+      }
     }
     return Promise.reject(error);
   }

@@ -7,6 +7,7 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
+  MusicalNoteIcon,
 } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
 import { normalizeArabic } from "../../utils/normalizeArabic";
@@ -14,6 +15,7 @@ import { useClickOutside } from "../../hooks/useClickOutside";
 import TagMultiSelect from "../../components/TagMultiSelect";
 import { FILE_TYPES, TYPE_PRIORITY } from "../../constants/fileTypes";
 import { formatDuration, formatSize } from "../../utils/formatters";
+import HymnCard from "../../components/HymnCard";
 import ConfirmDialog from "../../components/ConfirmDialog";
 
 const HymnList = () => {
@@ -37,20 +39,10 @@ const HymnList = () => {
   const tagsRef = useRef(null);
   const fileTypesRef = useRef(null);
 
-  // Close sort dropdown on outside click
   useClickOutside(sortRef, () => setShowSortDropdown(false), showSortDropdown);
-
-  // Close tags dropdown on outside click
   useClickOutside(tagsRef, () => setShowTagsDropdown(false), showTagsDropdown);
+  useClickOutside(fileTypesRef, () => setShowFileTypesDropdown(false), showFileTypesDropdown);
 
-  // Close file types dropdown on outside click
-  useClickOutside(
-    fileTypesRef,
-    () => setShowFileTypesDropdown(false),
-    showFileTypesDropdown
-  );
-
-  // Sort options
   const sortOptions = [
     { value: "most-recent", label: "الأحدث" },
     { value: "alphabetical", label: "أبجدياً" },
@@ -60,9 +52,7 @@ const HymnList = () => {
 
   const typePriority = TYPE_PRIORITY;
 
-  const confirmDelete = (id) => {
-    setShowDeleteConfirm(id);
-  };
+  const confirmDelete = (id) => setShowDeleteConfirm(id);
 
   const handleDelete = async (id) => {
     try {
@@ -73,33 +63,21 @@ const HymnList = () => {
     }
   };
 
-  // Optimized filtering and sorting with useMemo
   const filteredHymns = useMemo(() => {
     const normTerm = normalizeArabic(searchTerm);
-
     return hymns
       .filter((hymn) => {
-        // Search filter - now includes lyrics
         const matchesSearch =
           normTerm === "" ||
           normalizeArabic(hymn.title).includes(normTerm) ||
           hymn.tags.some((tag) => normalizeArabic(tag.name).includes(normTerm)) ||
           (hymn.lyric?.content && normalizeArabic(hymn.lyric.content).includes(normTerm));
-
-        // Tags filter
         const matchesTags =
           selectedTags.length === 0 ||
-          selectedTags.every((tagId) =>
-            hymn.tags.some((tag) => tag.id === tagId)
-          );
-
-        // File types filter
+          selectedTags.every((tagId) => hymn.tags.some((tag) => tag.id === tagId));
         const matchesFileTypes =
           selectedFileTypes.length === 0 ||
-          selectedFileTypes.every((fileType) =>
-            hymn.files.some((file) => file.type === fileType)
-          );
-
+          selectedFileTypes.every((fileType) => hymn.files.some((file) => file.type === fileType));
         return matchesSearch && matchesTags && matchesFileTypes;
       })
       .sort((a, b) => {
@@ -124,16 +102,12 @@ const HymnList = () => {
       });
   }, [hymns, searchTerm, selectedTags, selectedFileTypes, sortBy]);
 
-  // Handle file type selection
   const handleFileTypeToggle = (fileType) => {
     setSelectedFileTypes((prev) =>
-      prev.includes(fileType)
-        ? prev.filter((type) => type !== fileType)
-        : [...prev, fileType]
+      prev.includes(fileType) ? prev.filter((type) => type !== fileType) : [...prev, fileType]
     );
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setSearchTerm("");
     setSortBy("most-recent");
@@ -151,7 +125,7 @@ const HymnList = () => {
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl">
         حدث خطأ: {error}
       </div>
     );
@@ -159,19 +133,25 @@ const HymnList = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">الترانيم</h1>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl text-white shadow-lg">
+            <MusicalNoteIcon className="h-6 w-6" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">الترانيم</h1>
+        </div>
         <Link
           to="/hymns/add"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 space-x-reverse transition-colors"
+          className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
-          <PlusIcon className="h-5 w-5 ml-2" />
+          <PlusIcon className="h-5 w-5" />
           إضافة ترنيمة جديدة
         </Link>
       </div>
 
       {/* Filter Controls */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-slate-700">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search Input */}
           <div className="relative">
@@ -183,7 +163,7 @@ const HymnList = () => {
               placeholder="اسم الترنيمة"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full pr-10 pl-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -191,23 +171,18 @@ const HymnList = () => {
           <div className="relative" ref={sortRef}>
             <button
               onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full flex justify-between items-center px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
-              <span>
-                {sortOptions.find((opt) => opt.value === sortBy)?.label}
-              </span>
-              <ChevronDownIcon className="h-5 w-5" />
+              <span>{sortOptions.find((opt) => opt.value === sortBy)?.label}</span>
+              <ChevronDownIcon className={`h-5 w-5 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+              <div className="absolute z-10 mt-2 w-full bg-white dark:bg-slate-800 shadow-xl rounded-xl py-2 border border-gray-100 dark:border-slate-700 overflow-hidden">
                 {sortOptions.map((option) => (
                   <button
                     key={option.value}
-                    onClick={() => {
-                      setSortBy(option.value);
-                      setShowSortDropdown(false);
-                    }}
-                    className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => { setSortBy(option.value); setShowSortDropdown(false); }}
+                    className="w-full text-right px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     {option.label}
                   </button>
@@ -216,41 +191,31 @@ const HymnList = () => {
             )}
           </div>
 
-          {/* Tags Dropdown (reused) */}
+          {/* Tags Dropdown */}
           <div className="relative" ref={tagsRef}>
-            <TagMultiSelect
-              allTags={tags}
-              selectedIds={selectedTags}
-              onChange={setSelectedTags}
-              placeholder="المواضيع"
-            />
+            <TagMultiSelect allTags={tags} selectedIds={selectedTags} onChange={setSelectedTags} placeholder="المواضيع" />
           </div>
 
           {/* File Types Dropdown */}
           <div className="relative" ref={fileTypesRef}>
             <button
               onClick={() => setShowFileTypesDropdown(!showFileTypesDropdown)}
-              className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full flex justify-between items-center px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
               <span>الملفات المتاحة</span>
-              <ChevronDownIcon className="h-5 w-5" />
+              <ChevronDownIcon className={`h-5 w-5 transition-transform ${showFileTypesDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showFileTypesDropdown && (
-              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+              <div className="absolute z-10 mt-2 w-full bg-white dark:bg-slate-800 shadow-xl rounded-xl py-2 border border-gray-100 dark:border-slate-700 overflow-hidden">
                 {FILE_TYPES.map((fileType) => (
-                  <label
-                    key={fileType.value}
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                  >
+                  <label key={fileType.value} className="flex items-center px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer transition-colors">
                     <input
                       type="checkbox"
                       checked={selectedFileTypes.includes(fileType.value)}
                       onChange={() => handleFileTypeToggle(fileType.value)}
-                      className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="ml-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-600 rounded"
                     />
-                    <span className="text-sm text-gray-700">
-                      {fileType.label}
-                    </span>
+                    <span className="text-sm text-gray-700 dark:text-gray-200">{fileType.label}</span>
                   </label>
                 ))}
               </div>
@@ -258,174 +223,31 @@ const HymnList = () => {
           </div>
         </div>
 
-        {/* Clear Filters Button */}
         <div className="mt-4 flex justify-end">
-          <button
-            onClick={clearFilters}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-          >
+          <button onClick={clearFilters} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
             مسح جميع الفلاتر
           </button>
         </div>
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
         عرض {filteredHymns.length} من أصل {hymns.length} ترنيمة
       </div>
 
       {/* Hymns Grid */}
       {filteredHymns.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-lg">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400 text-lg bg-white dark:bg-slate-800 rounded-xl shadow-md">
           لا توجد نتائج للبحث
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredHymns.map((hymn) => (
-            <div
-              key={hymn.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full"
-            >
-              {/* Content wrapper that grows */}
-              <div className="flex-1">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {hymn.title}
-                  </h3>
-                  <div className="flex space-x-2 space-x-reverse">
-                    <Link
-                      to={`/hymns/edit/${hymn.id}`}
-                      className="text-blue-600 hover:text-blue-800 p-1"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </Link>
-                    <button
-                      onClick={() => confirmDelete(hymn.id)}
-                      className="text-red-600 hover:text-red-800 p-1"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-
-                {hymn.tags && hymn.tags.length > 0 && (
-                  <div className="mb-4">
-                    <span className="text-sm font-medium text-gray-700">
-                      المواضيع:
-                    </span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {hymn.tags.map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {hymn.files && hymn.files.length > 0 && (
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      الملفات:
-                    </span>
-                    <div className="mt-1 space-y-1">
-                      {hymn.files
-                        .filter((file) => file.type !== "تم الانشاء")
-                        .slice()
-                        .sort((a, b) => {
-                          const pa = typePriority[a.type] ?? 999;
-                          const pb = typePriority[b.type] ?? 999;
-                          if (pa !== pb) return pa - pb;
-                          return (a.type || "").localeCompare(b.type || "");
-                        })
-                        .map((file) => (
-                          <div key={file.id} className="text-sm">
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={file.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 underline"
-                              >
-                                {file.type}
-                              </a>
-                              <div className="inline-flex items-center gap-2 text-gray-600">
-                                {formatSize(file.size) && (
-                                  <span
-                                    dir="ltr"
-                                    className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
-                                  >
-                                    {formatSize(file.size)}
-                                  </span>
-                                )}
-                                {file.type !== "DOCUMENT" &&
-                                  file.type !== "POWERPOINT" &&
-                                  formatDuration(file.duration) && (
-                                    <span
-                                      dir="ltr"
-                                      className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
-                                    >
-                                      {formatDuration(file.duration)}
-                                    </span>
-                                  )}
-                                {file.type === "DOCUMENT" &&
-                                  !formatSize(file.size) && (
-                                    <span className="text-gray-500">
-                                      حجم غير محدد
-                                    </span>
-                                  )}
-                                {file.type === "POWERPOINT" &&
-                                  !formatSize(file.size) && (
-                                    <span className="text-gray-500">
-                                      حجم غير محدد
-                                    </span>
-                                  )}
-                                {file.type !== "DOCUMENT" &&
-                                  file.type !== "POWERPOINT" &&
-                                  !formatSize(file.size) &&
-                                  !formatDuration(file.duration) && (
-                                    <span className="text-gray-500">
-                                      حجم/مدة غير محددين
-                                    </span>
-                                  )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Lyrics Preview */}
-                {hymn.lyric?.content && (
-                  <div className="mt-3">
-                    <span className="text-sm font-medium text-gray-700">
-                      الكلمات:
-                    </span>
-                    <div className="mt-1 text-sm text-gray-600 bg-gray-50 rounded-md p-2 max-h-20 overflow-hidden">
-                      {hymn.lyric.content.substring(0, 100)}
-                      {hymn.lyric.content.length > 100 && '...'}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Dates - fixed at bottom */}
-              <div className="mt-4 text-sm text-gray-500">
-                <div>تم الإنشاء في: {new Date(hymn.createdAt).toLocaleDateString("ar-EG")}</div>
-                {hymn.updatedAt && hymn.updatedAt !== hymn.createdAt && (
-                  <div>آخر تحديث في: {new Date(hymn.updatedAt).toLocaleDateString("ar-EG")}</div>
-                )}
-              </div>
-            </div>
+            <HymnCard key={hymn.id} hymn={hymn} onDelete={confirmDelete} />
           ))}
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       <ConfirmDialog
         isOpen={!!showDeleteConfirm}
         title="تأكيد الحذف"

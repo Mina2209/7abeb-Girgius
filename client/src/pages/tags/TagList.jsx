@@ -1,17 +1,14 @@
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTags } from '../../contexts/TagContext';
-import { TrashIcon, PencilIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PencilIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { normalizeArabic } from '../../utils/normalizeArabic';
 import { useClickOutside } from '../../hooks/useClickOutside';
 
-// Entity types that tags can be linked to
 const ENTITY_TYPES = [
   { value: 'hymns', label: 'الترانيم' },
   { value: 'sayings', label: 'الأقوال' },
-  // Future entity types can be added here:
-  // { value: 'sermons', label: 'الوعظ' },
 ];
 
 const TagList = () => {
@@ -25,42 +22,27 @@ const TagList = () => {
   const entityTypesRef = useRef(null);
   const categoriesRef = useRef(null);
 
-  // Close entity types dropdown on outside click
   useClickOutside(entityTypesRef, () => setShowEntityTypesDropdown(false), showEntityTypesDropdown);
   useClickOutside(categoriesRef, () => setShowCategoriesDropdown(false), showCategoriesDropdown);
 
-  // Extract unique categories from tags
   const categories = useMemo(() => {
     const uniqueCategories = [...new Set(tags.filter(t => t.category).map(t => t.category))];
     return uniqueCategories.sort();
   }, [tags]);
 
-  // Compute filtered tags on the fly
   const filteredTags = useMemo(() => {
     return tags.filter(tag => {
-      // Search filter
       const matchesSearch = normalizeArabic(tag.name).includes(normalizeArabic(localSearch));
-
-      // Entity types filter
-      const matchesEntityTypes = selectedEntityTypes.length === 0 || 
+      const matchesEntityTypes = selectedEntityTypes.length === 0 ||
         selectedEntityTypes.some(entityType => {
           switch (entityType) {
-            case 'hymns':
-              return tag.hymns && tag.hymns.length > 0;
-            case 'sayings':
-              return tag.sayings && tag.sayings.length > 0;
-            // Future entity types can be added here:
-            // case 'sermons':
-            //   return tag.sermons && tag.sermons.length > 0;
-            default:
-              return false;
+            case 'hymns': return tag.hymns && tag.hymns.length > 0;
+            case 'sayings': return tag.sayings && tag.sayings.length > 0;
+            default: return false;
           }
         });
-
-      // Category filter
-      const matchesCategory = selectedCategories.length === 0 || 
+      const matchesCategory = selectedCategories.length === 0 ||
         (tag.category && selectedCategories.includes(tag.category));
-
       return matchesSearch && matchesEntityTypes && matchesCategory;
     });
   }, [tags, localSearch, selectedEntityTypes, selectedCategories]);
@@ -73,17 +55,13 @@ const TagList = () => {
 
   const handleEntityTypeToggle = (entityType) => {
     setSelectedEntityTypes(prev =>
-      prev.includes(entityType)
-        ? prev.filter(type => type !== entityType)
-        : [...prev, entityType]
+      prev.includes(entityType) ? prev.filter(type => type !== entityType) : [...prev, entityType]
     );
   };
 
   const handleCategoryToggle = (category) => {
     setSelectedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(cat => cat !== category)
-        : [...prev, category]
+      prev.includes(category) ? prev.filter(cat => cat !== category) : [...prev, category]
     );
   };
 
@@ -112,9 +90,10 @@ const TagList = () => {
       </div>
     );
   }
+
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl">
         حدث خطأ: {error}
       </div>
     );
@@ -122,15 +101,25 @@ const TagList = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">المواضيع</h1>
-        <Link to="/tags/add" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 space-x-reverse transition-colors">
-          <PlusIcon className="h-5 w-5 ml-2" /> <span>إضافة موضوع جديد</span>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl text-white shadow-lg">
+            <TagIcon className="h-6 w-6" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">المواضيع</h1>
+        </div>
+        <Link
+          to="/tags/add"
+          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+        >
+          <PlusIcon className="h-5 w-5" />
+          إضافة موضوع جديد
         </Link>
       </div>
 
       {/* Filter Controls */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-slate-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search Input */}
           <div className="relative">
@@ -142,7 +131,7 @@ const TagList = () => {
               placeholder="البحث في المواضيع..."
               value={localSearch}
               onChange={handleSearch}
-              className="block w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full pr-10 pl-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -150,27 +139,22 @@ const TagList = () => {
           <div className="relative" ref={entityTypesRef}>
             <button
               onClick={() => setShowEntityTypesDropdown(!showEntityTypesDropdown)}
-              className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full flex justify-between items-center px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
             >
               <span>المرتبطة بـ</span>
-              <ChevronDownIcon className="h-5 w-5" />
+              <ChevronDownIcon className={`h-5 w-5 transition-transform ${showEntityTypesDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showEntityTypesDropdown && (
-              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+              <div className="absolute z-10 mt-2 w-full bg-white dark:bg-slate-800 shadow-xl rounded-xl py-2 border border-gray-100 dark:border-slate-700 overflow-hidden">
                 {ENTITY_TYPES.map((entityType) => (
-                  <label
-                    key={entityType.value}
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                  >
+                  <label key={entityType.value} className="flex items-center px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer transition-colors">
                     <input
                       type="checkbox"
                       checked={selectedEntityTypes.includes(entityType.value)}
                       onChange={() => handleEntityTypeToggle(entityType.value)}
-                      className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="ml-3 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-slate-600 rounded"
                     />
-                    <span className="text-sm text-gray-700">
-                      {entityType.label}
-                    </span>
+                    <span className="text-sm text-gray-700 dark:text-gray-200">{entityType.label}</span>
                   </label>
                 ))}
               </div>
@@ -182,27 +166,22 @@ const TagList = () => {
             <div className="relative" ref={categoriesRef}>
               <button
                 onClick={() => setShowCategoriesDropdown(!showCategoriesDropdown)}
-                className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full flex justify-between items-center px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
               >
                 <span>الفئة {selectedCategories.length > 0 && `(${selectedCategories.length})`}</span>
-                <ChevronDownIcon className="h-5 w-5" />
+                <ChevronDownIcon className={`h-5 w-5 transition-transform ${showCategoriesDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showCategoriesDropdown && (
-                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+                <div className="absolute z-10 mt-2 w-full bg-white dark:bg-slate-800 shadow-xl rounded-xl py-2 border border-gray-100 dark:border-slate-700 overflow-hidden">
                   {categories.map((category) => (
-                    <label
-                      key={category}
-                      className="flex items-center px-4 py-2 hover:bg-gray-100"
-                    >
+                    <label key={category} className="flex items-center px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer transition-colors">
                       <input
                         type="checkbox"
                         checked={selectedCategories.includes(category)}
                         onChange={() => handleCategoryToggle(category)}
-                        className="ml-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="ml-3 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-slate-600 rounded"
                       />
-                      <span className="text-sm text-gray-700">
-                        {category}
-                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-200">{category}</span>
                     </label>
                   ))}
                 </div>
@@ -211,83 +190,71 @@ const TagList = () => {
           )}
         </div>
 
-        {/* Clear Filters Button */}
         <div className="mt-4 flex justify-end">
-          <button
-            onClick={clearFilters}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-          >
+          <button onClick={clearFilters} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
             مسح جميع الفلاتر
           </button>
         </div>
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
         عرض {filteredTags.length} من أصل {tags.length} موضوع
       </div>
 
       {/* Tags Grid */}
       {filteredTags.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-lg">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400 text-lg bg-white dark:bg-slate-800 rounded-xl shadow-md">
           لا توجد نتائج للبحث
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTags.map(tag => (
-            <div key={tag.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full">
-              {/* Content wrapper that grows */}
+            <div key={tag.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-200 flex flex-col h-full border border-gray-100 dark:border-slate-700 hover:-translate-y-1">
               <div className="flex-1">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900">{tag.name}</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{tag.name}</h3>
                     {tag.category && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 mt-2">
                         {tag.category}
                       </span>
                     )}
                   </div>
-                  <div className="flex space-x-2 space-x-reverse">
-                    <Link to={`/tags/edit/${tag.id}`} className="text-blue-600 hover:text-blue-800 p-1">
+                  <div className="flex gap-1">
+                    <Link to={`/tags/edit/${tag.id}`} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
                       <PencilIcon className="h-5 w-5" />
                     </Link>
-                    <button onClick={() => confirmDelete(tag.id)} className="text-red-600 hover:text-red-800 p-1">
+                    <button onClick={() => confirmDelete(tag.id)} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                       <TrashIcon className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
 
                 {(tag.hymns?.length > 0 || tag.sayings?.length > 0) && (
-                  <div className="mb-4 grid grid-cols-3 gap-3">
+                  <div className="mb-4 flex flex-wrap gap-3">
                     {tag.hymns?.length > 0 && (
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">الترانيم المرتبطة:</span>
-                        <div className="mt-1">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            {tag.hymns.length} ترنيمة
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300">
+                          {tag.hymns.length} ترنيمة
+                        </span>
                       </div>
                     )}
                     {tag.sayings?.length > 0 && (
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">الأقوال المرتبطة:</span>
-                        <div className="mt-1">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {tag.sayings.length} قول
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300">
+                          {tag.sayings.length} قول
+                        </span>
                       </div>
                     )}
                   </div>
                 )}
               </div>
 
-              {/* Dates - fixed at bottom */}
-              <div className="text-sm text-gray-500 mt-4">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
                 <div>تم الإنشاء في: {new Date(tag.createdAt).toLocaleDateString('ar-EG')}</div>
                 {tag.updatedAt && tag.updatedAt !== tag.createdAt && (
-                  <div> آخر تحديث في: {new Date(tag.updatedAt).toLocaleDateString('ar-EG')}</div>
+                  <div>آخر تحديث في: {new Date(tag.updatedAt).toLocaleDateString('ar-EG')}</div>
                 )}
               </div>
             </div>

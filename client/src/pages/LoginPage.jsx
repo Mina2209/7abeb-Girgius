@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import ThemeToggle from '../components/ThemeToggle';
 import {
   LockClosedIcon,
   UserIcon,
@@ -18,6 +20,14 @@ export default function LoginPage() {
   const [touched, setTouched] = useState({ username: false, password: false });
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Check for redirect after login
+  useEffect(() => {
+    const redirect = sessionStorage.getItem('redirectAfterLogin');
+    if (redirect) {
+      sessionStorage.removeItem('redirectAfterLogin');
+    }
+  }, []);
 
   const validateForm = () => {
     const errors = {};
@@ -40,17 +50,19 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setTouched({ username: true, password: true });
-    
+
     if (!isFormValid) return;
-    
+
     setError('');
     setLoading(true);
 
     try {
       const result = await login(username, password);
-      
+
       if (result.success) {
-        navigate('/');
+        const redirect = sessionStorage.getItem('redirectAfterLogin') || '/';
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirect);
       } else {
         setError(result.error || 'فشل تسجيل الدخول');
       }
@@ -66,16 +78,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4" dir="rtl">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-1000"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 dark:bg-blue-900/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 dark:bg-indigo-900/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-1000"></div>
+      </div>
+
+      {/* Theme toggle in corner */}
+      <div className="absolute top-4 left-4">
+        <ThemeToggle />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Card */}
-        <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8 space-y-8">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50 p-8 space-y-8">
           {/* Logo/Header */}
           <div className="text-center space-y-2">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
@@ -83,13 +100,13 @@ export default function LoginPage() {
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">منصة حبيب جرجس</h1>
-            <p className="text-gray-500 text-sm">نظام إدارة المحتوى</p>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">منصة حبيب جرجس</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">نظام إدارة المحتوى</p>
           </div>
 
           {/* Error Alert */}
           {error && (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl animate-shake">
+            <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl animate-shake">
               <ExclamationCircleIcon className="w-5 h-5 flex-shrink-0" />
               <p className="text-sm">{error}</p>
             </div>
@@ -99,7 +116,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username Field */}
             <div className="space-y-2">
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 اسم المستخدم
               </label>
               <div className="relative">
@@ -112,10 +129,10 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   onBlur={() => handleBlur('username')}
-                  className={`w-full pr-10 pl-4 py-3 border rounded-xl bg-gray-50 focus:bg-white transition-colors
-                    ${touched.username && formErrors.username 
-                      ? 'border-red-300 focus:ring-2 focus:ring-red-200 focus:border-red-400' 
-                      : 'border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-400'
+                  className={`w-full pr-10 pl-4 py-3 border rounded-xl bg-gray-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 transition-colors text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400
+                    ${touched.username && formErrors.username
+                      ? 'border-red-300 dark:border-red-600 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800 focus:border-red-400'
+                      : 'border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400'
                     }`}
                   placeholder="أدخل اسم المستخدم"
                   disabled={loading}
@@ -123,7 +140,7 @@ export default function LoginPage() {
                 />
               </div>
               {touched.username && formErrors.username && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1">
                   <ExclamationCircleIcon className="w-4 h-4" />
                   {formErrors.username}
                 </p>
@@ -132,7 +149,7 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 كلمة المرور
               </label>
               <div className="relative">
@@ -145,10 +162,10 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onBlur={() => handleBlur('password')}
-                  className={`w-full pr-10 pl-12 py-3 border rounded-xl bg-gray-50 focus:bg-white transition-colors
-                    ${touched.password && formErrors.password 
-                      ? 'border-red-300 focus:ring-2 focus:ring-red-200 focus:border-red-400' 
-                      : 'border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-400'
+                  className={`w-full pr-10 pl-12 py-3 border rounded-xl bg-gray-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 transition-colors text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400
+                    ${touched.password && formErrors.password
+                      ? 'border-red-300 dark:border-red-600 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800 focus:border-red-400'
+                      : 'border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400'
                     }`}
                   placeholder="أدخل كلمة المرور"
                   disabled={loading}
@@ -157,7 +174,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -168,7 +185,7 @@ export default function LoginPage() {
                 </button>
               </div>
               {touched.password && formErrors.password && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <p className="text-red-500 dark:text-red-400 text-xs mt-1 flex items-center gap-1">
                   <ExclamationCircleIcon className="w-4 h-4" />
                   {formErrors.password}
                 </p>
@@ -203,8 +220,8 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <div className="text-center pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400">
+          <div className="text-center pt-4 border-t border-gray-100 dark:border-slate-700">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
               جميع الحقوق محفوظة © {new Date().getFullYear()}
             </p>
           </div>

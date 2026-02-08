@@ -5,6 +5,23 @@ function sanitizeFilename(name) {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
+// Extract the original filename from an S3 key
+// Keys are formatted as: prefix/timestamp-random-originalFilename
+function extractOriginalFilename(key) {
+  if (!key) return null;
+  // Get the last part after the final slash (the actual filename part)
+  const parts = key.split('/');
+  const filename = parts[parts.length - 1];
+  // The format is: timestamp-random-originalFilename
+  // We need to remove the first two segments (timestamp and random number)
+  const match = filename.match(/^\d+-\d+-(.+)$/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  // Fallback to the full filename if pattern doesn't match
+  return filename;
+}
+
 // Factory to create an S3 service instance configured with region, bucket and prefix
 export function createS3Service({ region, bucket, prefix = 'Uploads/' } = {}) {
   if (!bucket) {
@@ -39,8 +56,18 @@ export function createS3Service({ region, bucket, prefix = 'Uploads/' } = {}) {
       return { url, key, expiresIn };
     },
 
-    async getPresignedGetUrl(key, expiresIn = 900) {
-      const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+    async getPresignedGetUrl(key, expiresIn = 900, originalFilename = null) {
+      // If no original filename provided, try to extract it from the key
+      const downloadFilename = originalFilename || extractOriginalFilename(key);
+
+      const commandOptions = { Bucket: bucket, Key: key };
+
+      // Set Content-Disposition to force the correct filename on download
+      if (downloadFilename) {
+        commandOptions.ResponseContentDisposition = `attachment; filename="${downloadFilename}"`;
+      }
+
+      const command = new GetObjectCommand(commandOptions);
       const url = await getSignedUrl(s3, command, { expiresIn });
       return url;
     },

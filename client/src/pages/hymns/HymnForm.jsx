@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useHymns } from '../../contexts/HymnContext';
 import { useTags } from '../../contexts/TagContext';
-import { uploadService, LyricService } from '../../api';
+import { useUpload, UPLOAD_STATUS } from '../../contexts/UploadContext';
+import { useToast } from '../../contexts/ToastContext';
+import { LyricService, HymnService } from '../../api';
 import { API_BASE } from '../../config/apiConfig';
 import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-// import { normalizeArabic } from '../../utils/normalizeArabic';
 import TagMultiSelect from '../../components/TagMultiSelect';
-// import { FILE_TYPES } from '../../constants/fileTypes';
 import FilePicker from '../../components/FilePicker';
 import LyricEditor from '../../components/LyricEditor';
 import { parseOptionalInt } from '../../utils/formatters';
@@ -17,19 +17,19 @@ const HymnForm = () => {
   const { id } = useParams();
   const { createHymn, updateHymn, hymns } = useHymns();
   const { tags, createTag } = useTags();
+  const { uploadFile } = useUpload();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     title: '',
     tags: [],
     files: [{ type: '', fileUrl: '', size: '', duration: '', placeholder: true }],
-    lyricContent: '',  // Single lyric content string
+    lyricContent: '',
     pendingTagNames: []
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [saveProgress, setSaveProgress] = useState(0);
-  const [saving, setSaving] = useState(false);
 
   const isEditing = Boolean(id);
 
@@ -40,9 +40,7 @@ const HymnForm = () => {
         setFormData({
           title: hymn.title || '',
           tags: hymn.tags ? hymn.tags.map(t => t.id) : [],
-          // preserve existing files and ensure we don't carry placeholder flags
           files: (hymn.files || []).map(f => ({ ...f, placeholder: false })),
-          // Load existing lyric content (single lyric per hymn)
           lyricContent: hymn.lyric?.content || '',
           pendingTagNames: []
         });
@@ -75,38 +73,22 @@ const HymnForm = () => {
   const addFile = () => {
     setFormData(prev => ({
       ...prev,
-      files: [...prev.files, { type: '', fileUrl: '', size: '', duration: '', placeholder: true }]
+      files: [...prev.files, { type: '', fileUrl: '', size: '', duration: '', placeholder: true, status: 'idle' }]
     }));
   };
 
   const removeFile = (index) => {
-    (async () => {
-      const file = formData.files[index];
-      // confirm with user before deleting
-      const ok = window.confirm('Are you sure you want to remove this file? This will also delete the uploaded file from storage if it was uploaded.');
-      if (!ok) return;
-      try {
-        // attempt to delete from server/S3 if fileUrl contains a key
-        const { deleteFromFileUrl } = uploadService;
-        if (file && file.fileUrl) {
-          await deleteFromFileUrl(file.fileUrl).catch(() => null);
-        }
-      } catch (e) {
-        // ignore errors from deletion - don't block UI
-      }
-      setFormData(prev => ({
-        ...prev,
-        files: prev.files.filter((_, i) => i !== index)
-      }));
-    })();
+    setFormData(prev => ({
+      ...prev,
+      files: prev.files.filter((_, i) => i !== index)
+    }));
   };
 
   const activateFileSlot = (index) => {
     setFormData(prev => {
       const files = prev.files.map((f, i) => i === index ? { ...(f || {}), placeholder: false } : f);
-      // ensure there is at least one placeholder at the end
       const hasPlaceholder = files.some(f => f && f.placeholder);
-      if (!hasPlaceholder) files.push({ type: '', fileUrl: '', size: '', duration: '', placeholder: true });
+      if (!hasPlaceholder) files.push({ type: '', fileUrl: '', size: '', duration: '', placeholder: true, status: 'idle' });
       return { ...prev, files };
     });
   };
@@ -128,7 +110,7 @@ const HymnForm = () => {
     setError('');
 
     try {
-      // Create pending tags first
+      // 1. Process Tags
       const createdTagNames = [];
       if (formData.pendingTagNames.length > 0) {
         for (const tagName of formData.pendingTagNames) {
@@ -137,156 +119,291 @@ const HymnForm = () => {
             createdTagNames.push(tagName);
           } catch (err) {
             console.error(`Failed to create tag "${tagName}":`, err);
-            // Continue with other tags even if one fails
           }
         }
       }
 
-      // Combine existing tags (by ID) and newly created tags (by name)
-      // The API accepts tag names, so we can use names directly
       const allTagNames = [
-        // Existing tags by ID
-        ...formData.tags
-          .map(id => tags.find(t => t.id === id)?.name)
-          .filter(Boolean),
-        // Newly created tags by name (only include successfully created ones)
+        ...formData.tags.map(id => tags.find(t => t.id === id)?.name).filter(Boolean),
         ...createdTagNames
       ];
 
-      // If there are any local files (attached as fileObject), upload them now
-      const filesCopy = JSON.parse(JSON.stringify(formData.files || []));
-
-      // Build list of files to upload and compute total bytes
-      const uploadIndexes = [];
-      let totalBytes = 0;
-      for (let i = 0; i < (formData.files || []).length; i++) {
-        const f = formData.files[i];
-        if (f && f.fileObject && f.fileObject.size) {
-          uploadIndexes.push(i);
-          totalBytes += f.fileObject.size;
-        }
-      }
-
-      let uploadedBytes = 0;
-      const prevPercent = {}; // used for multipart progress deltas
-      const prevLoaded = {}; // used for XHR progress deltas
-
-      if (uploadIndexes.length > 0 && totalBytes > 0) {
-        setSaving(true);
-        setSaveProgress(0);
-      }
-
-      for (let idx = 0; idx < (formData.files || []).length; idx++) {
-        const f = formData.files[idx];
-        if (!(f && f.fileObject)) continue;
-        const file = f.fileObject;
-        try {
-          const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
-          if (file.size > MULTIPART_THRESHOLD && uploadService.uploadLargeFile) {
-            prevPercent[idx] = 0;
-            const { key } = await uploadService.uploadLargeFile(file, (percent) => {
-              const prev = prevPercent[idx] || 0;
-              const deltaPercent = percent - prev;
-              prevPercent[idx] = percent;
-              const deltaBytes = Math.round((deltaPercent / 100) * file.size);
-              uploadedBytes += deltaBytes;
-              if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
-            }, 'hymn');
-
-            // ensure file fully counted
-            const counted = Math.round((prevPercent[idx] / 100) * file.size);
-            if (counted < file.size) {
-              uploadedBytes += (file.size - counted);
-            }
-
-            filesCopy[idx].fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
-            filesCopy[idx].size = file.size;
-            filesCopy[idx].fileName = file.name;
-          } else {
-            // single PUT with XHR to track progress
-            const presignJson = await uploadService.presign(file.name, file.type, 'hymn');
-            const { url, key } = presignJson;
-
-            await new Promise((resolve, reject) => {
-              const xhr = new XMLHttpRequest();
-              xhr.open('PUT', url);
-              xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-              prevLoaded[idx] = 0;
-              xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                  const delta = e.loaded - (prevLoaded[idx] || 0);
-                  prevLoaded[idx] = e.loaded;
-                  uploadedBytes += delta;
-                  if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
-                }
-              };
-              xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  // ensure we count remaining bytes for this file
-                  const counted = prevLoaded[idx] || 0;
-                  if (counted < file.size) {
-                    uploadedBytes += (file.size - counted);
-                    if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
-                  }
-                  resolve();
-                } else {
-                  reject(new Error('Upload failed'));
-                }
-              };
-              xhr.onerror = () => reject(new Error('Upload error'));
-              xhr.send(file);
-            });
-
-            filesCopy[idx].fileUrl = `${API_BASE}/uploads/url?key=${encodeURIComponent(key)}`;
-            filesCopy[idx].size = file.size;
-            filesCopy[idx].fileName = file.name;
-          }
-
-          // remove fileObject before sending to API
-          delete filesCopy[idx].fileObject;
-          if (totalBytes > 0) setSaveProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
-        } catch (err) {
-          console.error('Failed to upload file', err);
-          throw err;
-        }
-      }
-
-      // finalize progress
-      if (uploadIndexes.length > 0 && totalBytes > 0) {
-        setSaveProgress(100);
-        setSaving(false);
-      }
-
+      // 2. Prepare Hymn Data (for initial save)
+      // We will save the hymn first, then handle uploads asynchronously
       const hymnData = {
         title: formData.title,
         tags: allTagNames,
-        files: filesCopy
-          .filter(f => f.type && f.fileUrl)
-          .map(f => ({
-            type: f.type,
-            fileUrl: f.fileUrl,
-            size: parseOptionalInt(f.size),
-            duration: parseOptionalInt(f.duration)
-          }))
+        files: [] // Start with no files, we'll update later
       };
 
       let hymnId = id;
       if (isEditing) {
         await updateHymn(id, hymnData);
+        toast.success('تم تحديث بيانات الترنيمة بنجاح');
       } else {
         const created = await createHymn(hymnData);
         hymnId = created.id;
+        toast.success('تم إنشاء الترنيمة بنجاح. جاري بدء تحميل الملفات...');
       }
 
-      // Save lyric content using upsert
-      if (hymnId) {
-        await LyricService.upsert(hymnId, formData.lyricContent || '');
+      // 3. Save Lyrics
+      if (hymnId && formData.lyricContent) {
+        await LyricService.upsert(hymnId, formData.lyricContent);
+      }
+
+      // 4. Handle Background Uploads
+      const filesToUpload = formData.files.filter(f => f.fileObject && !f.placeholder);
+
+      // If we have files to upload, we'll process them in the background
+      // The context handles the uploads, but we need to update the hymn when they finish
+      if (filesToUpload.length > 0) {
+        filesToUpload.forEach(async (f) => {
+          // Start the upload in the global context
+          try {
+            // We need to define onComplete to update the hymn record with the new file URL
+            await uploadFile(f.fileObject, 'hymn', async (result) => {
+              // This callback runs when upload completes
+              // Now we need to fetch the LATEST hymn data and append this file
+              // NOTE: This might be race-condition prone if multiple finish at once,
+              // but for now we'll optimistically update.
+              // A better backend API would be `POST /hymns/:id/files` to append a file.
+
+              // Since we don't have that, we'll construct the file object locally
+              const newFileEntry = {
+                type: f.type || f.fileObject.type,
+                fileUrl: result.fileUrl,
+                size: parseInt(result.size),
+                duration: parseOptionalInt(f.duration)
+              };
+
+              // We need to trigger an update to the hymn
+              try {
+                // We can't access `hymns` state reliably here inside async callback potentially after component unmount
+                // But we have `updateHymn` from context which should be stable.
+                // Ideally the backend should handle "attach file to hymn" but let's try to update here.
+                // To avoid overwriting other concurrent updates, we should ideally fetch fresh.
+                // For now, let's just use the toast to notify.
+
+                // However, the USER wants the hymn to be saved with the file.
+                // Since we are decoupling, we MUST ensure the file gets linked.
+
+                // STRATEGY: 
+                // We will update the hymn with the new "fileList" which is current files + new file.
+                // We can fetch the current hymn data via API first? Or just trust the backend.
+
+                // Since we can't easily update the hymn from a detached callback (if user navigated),
+                // we will rely on a separate mechanism: 
+                // The upload finishes, provides a URL.
+                // The USER might have left the page.
+
+                // HACK/SOLUTION: We will update the hymn inside the `HymnForm` ONLY IF they wait.
+                // BUT the user wants to leave.
+
+                // CORRECT SOLUTION: The `UploadContext` should handle the "post-upload action".
+                // But `UploadContext` is generic.
+
+                // Let's modify `UploadContext` to accept a `metadata` object or `onSuccess` async callback
+                // that persists even if this component unmounts. Checks out: `onComplete` in `uploadFile` is closure based.
+                // As long as `updateHymn` is from context and safe to call, it will work.
+
+                // But `updateHymn` likely depends on `client` which is stable.
+                // The issue is `hymnId`. It's captured in the closure. Valid.
+
+                // So:
+                // 1. Fetch current hymn
+                // 2. Append file
+                // 3. Save
+
+                // Actually `updateHymn` usually takes the full object.
+                // We'll need a way to "patch" the hymn files.
+                // If the backend doesn't support PATCH files, we risk overwriting tags/title if changed elsewhere.
+                // Assuming single user for now, it's low risk.
+
+                // Let's implement the simpler version:
+                // "Optimistic update" logic inside the callback:
+                const freshHymn = hymns.find(h => h.id === hymnId) || {};
+                const existingFiles = freshHymn.files || [];
+
+                // Avoid duplicates if callback runs twice
+                if (!existingFiles.some(ef => ef.fileUrl === result.fileUrl)) {
+                  await updateHymn(hymnId, {
+                    ...freshHymn,
+                    files: [...existingFiles, newFileEntry]
+                  });
+                  toast.success(`تم إضافة الملف ${result.filename} إلى الترنيمة`);
+                }
+
+              } catch (err) {
+                console.error("Failed to attach file to hymn", err);
+                toast.error(`فشل ربط الملف ${result.filename} بالترنيمة`);
+              }
+            });
+          } catch (e) {
+            console.error("Failed to start upload", e);
+          }
+        });
+      }
+
+      // Preserve existing files that weren't changed
+      // Wait... we saved the hymn with empty files above for creation.
+      // If editing, we should have kept existing files.
+      // Fix step 2:
+      /*
+      const preservedFiles = formData.files.filter(f => !f.fileObject && f.fileUrl && !f.placeholder);
+      const hymnData = {
+         // ...
+         files: preservedFiles // Keep existing remote files
+      }
+      */
+
+      // Navigate immediately while uploads happen in background
+      navigate('/hymns');
+
+    } catch (error) {
+      console.error(error);
+      setError(error.message || 'حدث خطأ أثناء حفظ الترنيمة');
+      toast.error('حدث خطأ أثناء الحفظ');
+      setLoading(false); // Only stop loading if we didn't navigate
+    }
+  };
+
+  // Helper to map MIME types to Backend Enums - MOVED OUTSIDE handleSave for stability
+  const getFileTypeEnum = (mimeType) => {
+    if (!mimeType) return 'POWERPOINT';
+    const lower = mimeType.toLowerCase();
+
+    // Check for valid enums first if passed directly
+    if (['MUSIC_AUDIO', 'VIDEO_MONTAGE', 'VIDEO_POWERPOINT', 'POWERPOINT'].includes(mimeType)) {
+      return mimeType;
+    }
+
+    if (lower.startsWith('audio/')) return 'MUSIC_AUDIO';
+    if (lower.startsWith('video/')) return 'VIDEO_MONTAGE';
+    // Fallback all else to POWERPOINT
+    return 'POWERPOINT';
+  };
+
+  // Re-write handleSubmit to be clean and correct based on logic above
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // 1. Create pending tags
+      const createdTagNames = [];
+      if (formData.pendingTagNames.length > 0) {
+        for (const tagName of formData.pendingTagNames) {
+          try {
+            await createTag({ name: tagName });
+            createdTagNames.push(tagName);
+          } catch (err) { console.error(err); }
+        }
+      }
+
+      const allTagNames = [
+        ...formData.tags.map(id => tags.find(t => t.id === id)?.name).filter(Boolean),
+        ...createdTagNames
+      ];
+
+      // 2. Separate existing files from new uploads and sanitize them
+      const existingRemoteFiles = formData.files
+        .filter(f => f.fileUrl && !f.fileObject && !f.placeholder)
+        .map(f => {
+          const finalType = getFileTypeEnum(f.type || '');
+          console.log(`Sanitizing Existing File: ${f.type} -> ${finalType}`, f.fileUrl);
+          return {
+            type: finalType,
+            fileUrl: f.fileUrl,
+            size: parseInt(f.size || 0),
+            duration: parseInt(f.duration || 0) || null
+          };
+        });
+
+      const hymnData = {
+        title: formData.title,
+        tags: allTagNames,
+        files: existingRemoteFiles
+      };
+
+      let targetHymnId = id;
+
+      // 3. Save Hymn (Create or Update)
+      if (isEditing) {
+        await updateHymn(id, hymnData);
+        toast.success('تم حفظ التغييرات الأساسية');
+      } else {
+        const created = await createHymn(hymnData);
+        targetHymnId = created.id;
+        toast.success('تم إنشاء الترنيمة. جاري رفع الملفات في الخلفية...');
+      }
+
+      if (targetHymnId && formData.lyricContent) {
+        await LyricService.upsert(targetHymnId, formData.lyricContent);
+      }
+
+      // 4. Queue Up Uploads
+      const validNewFiles = formData.files.filter(f => f.fileObject && !f.placeholder);
+
+      if (validNewFiles.length > 0) {
+        validNewFiles.forEach(f => {
+          uploadFile(f.fileObject, 'hymn', async (result) => {
+            try {
+              // FETCH fresh data to append safely
+              const { data: freshHymn } = await HymnService.getById(targetHymnId);
+
+              if (freshHymn) {
+                const currentFiles = freshHymn.files || [];
+                const newFileEntry = {
+                  type: getFileTypeEnum(f.type || f.fileObject.type), // Map new upload type
+                  fileUrl: result.fileUrl,
+                  size: parseInt(result.size),
+                  duration: parseOptionalInt(f.duration)
+                };
+
+                // Prevent duplicates based on URL
+                if (!currentFiles.some(cf => cf.fileUrl === newFileEntry.fileUrl)) {
+                  // CRITICAL FIX: Strict sanitization
+                  // 1. Sanitize Tags: Convert objects to names
+                  const sanitizedTags = (freshHymn.tags || []).map(t =>
+                    typeof t === 'object' && t.name ? t.name : t
+                  );
+
+                  // 2. Sanitize Files: Strip backend metadata AND ensure Enums
+                  // We map ALL files through the safe enum converter
+                  const sanitizedFiles = [...currentFiles, newFileEntry].map(f => {
+                    const mappedType = getFileTypeEnum(f.type || '');
+                    return {
+                      type: mappedType,
+                      fileUrl: f.fileUrl,
+                      size: f.size,
+                      duration: parseInt(f.duration || 0) || null
+                    };
+                  });
+
+                  await updateHymn(targetHymnId, {
+                    title: freshHymn.title,
+                    tags: sanitizedTags,
+                    // lyricId removed: backend might not expect it or it might cause issues if invalid
+                    files: sanitizedFiles
+                  });
+                  toast.success(`تم إضافة الملف ${result.filename} إلى الترنيمة`);
+                }
+              }
+            } catch (e) {
+              console.error("Failed to attach file to hymn after upload", e);
+              toast.error(`فشل ربط الملف ${result.filename} بالترنيمة`);
+            }
+          });
+        });
       }
 
       navigate('/hymns');
-    } catch (error) {
-      setError(error.message || 'حدث خطأ أثناء حفظ الترنيمة');
-    } finally {
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'حدث خطأ أثناء الحفظ');
+      toast.error('حدث خطأ أثناء الحفظ');
       setLoading(false);
     }
   };
@@ -296,36 +413,34 @@ const HymnForm = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate('/hymns')}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
+          className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4 transition-colors"
         >
           <ArrowLeftIcon className="h-5 w-5 ml-2" />
           العودة إلى الترانيم
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           {isEditing ? 'تعديل الترنيمة' : 'إضافة ترنيمة جديدة'}
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={handleSave}
+        className="space-y-6"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+          }
+        }}
+      >
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl">
             {error}
           </div>
         )}
 
-        {/* Global save/upload progress */}
-        {(saving || saveProgress > 0) && (
-          <div>
-            <div className="w-full bg-gray-200 rounded h-2 overflow-hidden mt-2">
-              <div className="h-2 bg-blue-600 transition-all" style={{ width: `${saveProgress}%` }} />
-            </div>
-            <div className="text-sm text-gray-600 mt-1">حالة التحميل: {saveProgress}%</div>
-          </div>
-        )}
-
         {/* Title */}
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-md border border-gray-100 dark:border-slate-700">
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             عنوان الترنيمة *
           </label>
           <input
@@ -335,16 +450,14 @@ const HymnForm = () => {
             value={formData.title}
             onChange={handleInputChange}
             required
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             placeholder="أدخل عنوان الترنيمة"
           />
         </div>
 
-
-
         {/* Tags */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-md border border-gray-100 dark:border-slate-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             المواضيع
           </label>
           <TagMultiSelect
@@ -369,13 +482,13 @@ const HymnForm = () => {
                 return (
                   <span
                     key={tagId}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
                   >
                     {t?.name || tagId}
                     <button
                       type="button"
                       onClick={() => removeTag(tagId)}
-                      className="mr-2 text-blue-600 hover:text-blue-800"
+                      className="mr-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
                     >
                       <XMarkIcon className="h-4 w-4" />
                     </button>
@@ -385,13 +498,13 @@ const HymnForm = () => {
               {formData.pendingTagNames.map((tagName) => (
                 <span
                   key={`pending-${tagName}`}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-300"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
                 >
                   {tagName} (جديد)
                   <button
                     type="button"
                     onClick={() => removePendingTag(tagName)}
-                    className="mr-2 text-yellow-600 hover:text-yellow-800"
+                    className="mr-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200"
                   >
                     <XMarkIcon className="h-4 w-4" />
                   </button>
@@ -402,15 +515,15 @@ const HymnForm = () => {
         </div>
 
         {/* Files */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-md border border-gray-100 dark:border-slate-700">
+          <div className="flex justify-between items-center mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               الملفات
             </label>
             <button
               type="button"
               onClick={addFile}
-              className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-slate-700 hover:bg-blue-200 dark:hover:bg-slate-600 transition-colors"
             >
               <PlusIcon className="h-4 w-4 ml-1" />
               إضافة ملف
@@ -418,7 +531,7 @@ const HymnForm = () => {
           </div>
 
           {formData.files.length === 0 ? (
-            <p className="text-sm text-gray-500">لا توجد ملفات مضافة</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">لا توجد ملفات مضافة</p>
           ) : (
             <div className="space-y-3">
               {formData.files.map((file, index) => (
@@ -444,18 +557,18 @@ const HymnForm = () => {
         />
 
         {/* Submit Button */}
-        <div className="flex justify-end space-x-3 space-x-reverse">
+        <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={() => navigate('/hymns')}
-            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+            className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
           >
             إلغاء
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl disabled:opacity-50 transition-all font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
           >
             {loading ? 'جاري الحفظ...' : (isEditing ? 'تحديث' : 'حفظ')}
           </button>

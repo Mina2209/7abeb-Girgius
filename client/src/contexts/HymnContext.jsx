@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from "react";
 import { useHymnApi } from "../hooks/useHymnApi";
+import { default as UploadService } from "../api/uploadService";
 
 const HymnContext = createContext();
 
@@ -69,6 +70,24 @@ export const HymnProvider = ({ children }) => {
   };
 
   const deleteHymn = async (id) => {
+    // 1. Find the hymn to get its files
+    const hymn = state.hymns.find(h => h.id === id);
+    if (hymn && hymn.files && hymn.files.length > 0) {
+      // 2. Try to delete all associated files
+      // we use map to trigger all deletes, but we don't block heavily on failures
+      try {
+        await Promise.allSettled(hymn.files.map(file => {
+          if (file.fileUrl) {
+            return UploadService.deleteFromFileUrl(file.fileUrl);
+          }
+          return Promise.resolve();
+        }));
+      } catch (err) {
+        console.error("Failed to cleanup files for hymn", id, err);
+      }
+    }
+
+    // 3. Delete the hymn record
     await apiDeleteHymn(id);
     dispatch({ type: "DELETE_HYMN", payload: id });
   };

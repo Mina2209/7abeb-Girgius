@@ -5,6 +5,7 @@ import HomePage from '../pages/home/HomePage';
 import LoginPage from '../pages/LoginPage';
 import HymnForm from '../pages/hymns/HymnForm';
 import HymnList from '../pages/hymns/HymnList';
+import HymnDetails from '../pages/hymns/HymnDetails';
 import TagList from '../pages/tags/TagList';
 import TagForm from '../pages/tags/TagForm';
 import LiturgyPage from '../pages/LiturgyPage';
@@ -22,18 +23,18 @@ import BackupManagement from '../pages/admin/BackupManagement';
 // Protected route wrapper for authenticated users
 function ProtectedRoute({ children }) {
     const { isAuthenticated, loading } = useAuth();
-    
+
     if (loading) return <div>Loading...</div>;
-    
+
     return isAuthenticated() ? children : <Navigate to="/login" replace />;
 }
 
 // Protected route wrapper for admin only
 function AdminRoute({ children }) {
     const { isAdmin, loading } = useAuth();
-    
+
     if (loading) return <div>Loading...</div>;
-    
+
     return isAdmin() ? children : <Navigate to="/" replace />;
 }
 
@@ -42,7 +43,7 @@ export default function AppRoutes() {
         <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
-            
+
             {/* Main pages - require authentication */}
             <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
             <Route path="/liturgy" element={<ProtectedRoute><LiturgyPage /></ProtectedRoute>} />
@@ -54,7 +55,9 @@ export default function AppRoutes() {
             <Route path="/programs" element={<ProtectedRoute><ProgramsPage /></ProtectedRoute>} />
 
             {/* Hymns - editors and admins */}
+            {/* Hymns - editors and admins */}
             <Route path="/hymns" element={<ProtectedRoute><HymnList /></ProtectedRoute>} />
+            <Route path="/hymns/:id" element={<ProtectedRoute><HymnDetails /></ProtectedRoute>} />
             <Route path="/hymns/add" element={<ProtectedRoute><HymnForm /></ProtectedRoute>} />
             <Route path="/hymns/edit/:id" element={<ProtectedRoute><HymnForm /></ProtectedRoute>} />
 

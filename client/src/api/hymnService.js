@@ -5,4 +5,5 @@ export const HymnService = {
   create: (data) => apiClient.post('/hymns', data),
   update: (id, data) => apiClient.put(`/hymns/${id}`, data),
   delete: (id) => apiClient.delete(`/hymns/${id}`),
+  getById: (id) => apiClient.get(`/hymns/${id}`),
 };
