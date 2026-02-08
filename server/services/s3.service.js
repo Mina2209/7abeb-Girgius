@@ -1,8 +1,18 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+// Sanitize filename for S3 - allow Unicode characters (Arabic, etc.)
+// Only remove characters that are problematic for URLs/file systems
 function sanitizeFilename(name) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  // Remove or replace problematic characters:
+  // - Control characters (0x00-0x1F, 0x7F)
+  // - Characters problematic for URLs/file systems: / \ : * ? " < > |
+  // - Leading/trailing spaces and dots
+  return name
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/[\/\\:*?"<>|]/g, '_')  // Replace problematic chars with underscore
+    .replace(/^[\s.]+|[\s.]+$/g, '') // Trim spaces and dots from ends
+    .replace(/\s+/g, '_');           // Replace spaces with underscores (optional, for cleaner URLs)
 }
 
 // Extract the original filename from an S3 key
