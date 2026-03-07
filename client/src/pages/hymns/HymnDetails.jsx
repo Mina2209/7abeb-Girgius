@@ -58,6 +58,96 @@ function getDisplayFilename(file) {
     }
 }
 
+// File card component with download state management
+const FileCard = ({ file, idx }) => {
+    const [isDownloading, setIsDownloading] = useState(false);
+    const Icon = FILE_ICONS[file.type] || DocumentIcon;
+    const isMedia = ['MUSIC_AUDIO', 'VIDEO_MONTAGE', 'VIDEO_POWERPOINT', 'AUDIO', 'VIDEO'].includes(file.type);
+
+    const handleDownload = async () => {
+        if (isDownloading) return;
+        setIsDownloading(true);
+        try {
+            const response = await fetch(file.fileUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = getDisplayFilename(file);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Download failed:', err);
+            window.open(file.fileUrl, '_blank');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    return (
+        <div key={idx} className="group">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                    <a
+                        href={file.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                    >
+                        <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-blue-500 flex-shrink-0">
+                            <Icon className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 transition-colors truncate">
+                                {getDisplayFilename(file)}
+                            </p>
+                            <p className="text-xs text-slate-400 font-mono">
+                                {file.type} • {formatSize(file.size)}
+                                {formatDuration(file.duration) && ` • ${formatDuration(file.duration)}`}
+                            </p>
+                        </div>
+                    </a>
+                    <button
+                        type="button"
+                        disabled={isDownloading}
+                        className={`p-2 rounded-lg transition-colors flex-shrink-0 ${isDownloading
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-wait'
+                            : 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
+                            }`}
+                        title={isDownloading ? 'جاري التحميل...' : 'تحميل الملف'}
+                        onClick={handleDownload}
+                    >
+                        {isDownloading ? (
+                            <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                        ) : (
+                            <ArrowDownTrayIcon className="w-5 h-5" />
+                        )}
+                    </button>
+                </div>
+            </div>
+            {/* Inline Player for Media - disable download to force using our button */}
+            {isMedia && (
+                <div className="mt-2 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
+                    {file.type.includes('AUDIO') ? (
+                        <audio controls controlsList="nodownload" className="w-full bg-slate-100 dark:bg-slate-800 h-10" preload="metadata">
+                            <source src={file.fileUrl} />
+                        </audio>
+                    ) : (
+                        <video controls controlsList="nodownload" className="w-full bg-black aspect-video" preload="metadata">
+                            <source src={file.fileUrl} />
+                        </video>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const HymnDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -163,69 +253,9 @@ const HymnDetails = () => {
                                 الملفات المرفقة
                             </h2>
                             <div className="space-y-3">
-                                {hymn.files.map((file, idx) => {
-                                    const Icon = FILE_ICONS[file.type] || DocumentIcon;
-                                    const isMedia = ['MUSIC_AUDIO', 'VIDEO_MONTAGE', 'VIDEO_POWERPOINT', 'AUDIO', 'VIDEO'].includes(file.type);
-
-                                    return (
-                                        <div key={idx} className="group">
-                                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
-                                                <div className="flex items-center gap-3">
-                                                    <a
-                                                        href={file.fileUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
-                                                    >
-                                                        <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-blue-500 flex-shrink-0">
-                                                            <Icon className="w-5 h-5" />
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 transition-colors truncate">
-                                                                {getDisplayFilename(file)}
-                                                            </p>
-                                                            <p className="text-xs text-slate-400 font-mono">
-                                                                {file.type} • {formatSize(file.size)}
-                                                                {formatDuration(file.duration) && ` • ${formatDuration(file.duration)}`}
-                                                            </p>
-                                                        </div>
-                                                    </a>
-                                                    <button
-                                                        type="button"
-                                                        className="p-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors flex-shrink-0"
-                                                        title="تحميل الملف"
-                                                        onClick={() => {
-                                                            // The server redirects to S3 with Content-Disposition header set
-                                                            const link = document.createElement('a');
-                                                            link.href = file.fileUrl;
-                                                            link.target = '_blank';
-                                                            link.rel = 'noopener noreferrer';
-                                                            document.body.appendChild(link);
-                                                            link.click();
-                                                            document.body.removeChild(link);
-                                                        }}
-                                                    >
-                                                        <ArrowDownTrayIcon className="w-5 h-5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            {/* Inline Player for Media */}
-                                            {isMedia && (
-                                                <div className="mt-2 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
-                                                    {file.type.includes('AUDIO') ? (
-                                                        <audio controls className="w-full bg-slate-100 dark:bg-slate-800 h-10" preload="metadata">
-                                                            <source src={file.fileUrl} />
-                                                        </audio>
-                                                    ) : (
-                                                        <video controls className="w-full bg-black aspect-video" preload="metadata">
-                                                            <source src={file.fileUrl} />
-                                                        </video>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                {hymn.files.map((file, idx) => (
+                                    <FileCard key={idx} file={file} idx={idx} />
+                                ))}
                             </div>
                         </div>
                     )}
