@@ -43,6 +43,7 @@ model Tag {
   category  String?
   hymns     Hymn[]
   sayings   Saying[]
+  images    Image[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -64,6 +65,33 @@ enum FileType {
   VIDEO_POWERPOINT
   POWERPOINT
   MUSIC_AUDIO
+}
+
+model Image {
+  id        String       @id @default(uuid())
+  title     String
+  imageUrl  String
+  tags      Tag[]
+  author    ImageAuthor? @relation(fields: [authorId], references: [id])
+  authorId  String?
+  type      ImageType?   @relation(fields: [typeId], references: [id])
+  typeId    String?
+  ai        Boolean      @default(false)
+  published Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ImageAuthor {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  images Image[]
+}
+
+model ImageType {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  images Image[]
 }
 
 model User {

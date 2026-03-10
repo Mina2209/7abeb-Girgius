@@ -10,6 +10,7 @@ import uploadRoutes from './routes/upload.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import lyricRoutes from './routes/lyric.routes.js';
 import backupRoutes from './routes/backup.routes.js';
+import imageRoutes from './routes/image.routes.js';
 import { BackupScheduler } from './services/backup.scheduler.js';
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/sayings', sayingRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/lyrics', lyricRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/images', imageRoutes);
 
 // note: uploads are served from S3 via presigned URLs; no local static serving
 

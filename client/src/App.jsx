@@ -5,6 +5,7 @@ import { UploadProvider } from './contexts/UploadContext';
 import { HymnProvider } from './contexts/HymnContext';
 import { TagProvider } from './contexts/TagContext';
 import { SayingProvider } from './contexts/SayingContext';
+import { ImageProvider } from './contexts/ImageContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AppRoutes from './routes/AppRoutes';
@@ -26,13 +27,15 @@ function App() {
               <TagProvider>
                 <HymnProvider>
                   <SayingProvider>
-                    {!isLoginPage && <Navbar />}
-                    <main className="flex-grow container mx-auto px-4 py-8">
-                      <AppRoutes />
-                    </main>
-                    {!isLoginPage && <Footer />}
-                    <SessionExpiredModal />
-                    <UploadIndicator />
+                    <ImageProvider>
+                      {!isLoginPage && <Navbar />}
+                      <main className="flex-grow container mx-auto px-4 py-8">
+                        <AppRoutes />
+                      </main>
+                      {!isLoginPage && <Footer />}
+                      <SessionExpiredModal />
+                      <UploadIndicator />
+                    </ImageProvider>
                   </SayingProvider>
                 </HymnProvider>
               </TagProvider>

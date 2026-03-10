@@ -8,6 +8,7 @@ export * from './tagService';
 export * from './sayingService';
 export * from './lyricService';
 export * from './backupService';
+export * from './imageService';
 
 // Provide a named `uploadService` export (convenience wrapper around default export)
 import uploadServiceDefault from './uploadService';
