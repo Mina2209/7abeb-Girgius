@@ -15,6 +15,7 @@ import SayingList from '../pages/sayings/SayingList';
 import SayingForm from '../pages/sayings/SayingForm';
 import ImageLibraryPage from '../pages/ImageLibraryPage';
 import ImageForm from '../pages/images/ImageForm';
+import ImageDetails from '../pages/images/ImageDetails';
 import SermonsPage from '../pages/SermonsPage';
 import ProgramsPage from '../pages/ProgramsPage';
 import UserManagement from '../pages/admin/UserManagement';
@@ -53,6 +54,7 @@ export default function AppRoutes() {
             <Route path="/sayings" element={<ProtectedRoute><SayingList /></ProtectedRoute>} />
             <Route path="/image-library" element={<ProtectedRoute><ImageLibraryPage /></ProtectedRoute>} />
             <Route path="/images/add" element={<ProtectedRoute><ImageForm /></ProtectedRoute>} />
+            <Route path="/images/:id" element={<ProtectedRoute><ImageDetails /></ProtectedRoute>} />
             <Route path="/images/edit/:id" element={<ProtectedRoute><ImageForm /></ProtectedRoute>} />
             <Route path="/sermons" element={<ProtectedRoute><SermonsPage /></ProtectedRoute>} />
             <Route path="/programs" element={<ProtectedRoute><ProgramsPage /></ProtectedRoute>} />

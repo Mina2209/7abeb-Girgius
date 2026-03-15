@@ -250,7 +250,7 @@ const ImageLibraryPage = () => {
               className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden border border-gray-100 dark:border-slate-700 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 group"
             >
               {/* Image Thumbnail */}
-              <div className="relative aspect-square bg-gray-100 dark:bg-slate-700 overflow-hidden">
+              <Link to={`/images/${image.id}`} className="block relative aspect-square bg-gray-100 dark:bg-slate-700 overflow-hidden cursor-pointer">
                 {image.imageUrl ? (
                   <img
                     src={buildImageSrc(image.imageUrl)}
@@ -278,7 +278,7 @@ const ImageLibraryPage = () => {
                     مسودة
                   </div>
                 )}
-              </div>
+              </Link>
 
               {/* Card Content */}
               <div className="p-4">

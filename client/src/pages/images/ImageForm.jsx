@@ -113,6 +113,11 @@ const ImageForm = () => {
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result);
       reader.readAsDataURL(file);
+      // Auto-fill title with filename (without extension) if title is empty
+      if (!formData.title.trim()) {
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        setFormData((prev) => ({ ...prev, title: nameWithoutExt }));
+      }
     }
   };
 
