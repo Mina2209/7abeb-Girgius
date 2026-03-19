@@ -41,6 +41,13 @@ const ImageForm = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Bulk upload (add mode only)
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkItems, setBulkItems] = useState([]); // { id, file, previewUrl, title, tags, pendingTagNames }
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState(0);
+  const [bulkUploadIndex, setBulkUploadIndex] = useState(0);
+
   // New author/type inline creation
   const [showNewAuthor, setShowNewAuthor] = useState(false);
   const [newAuthorName, setNewAuthorName] = useState("");
@@ -54,6 +61,20 @@ const ImageForm = () => {
   const typeDropdownRef = React.useRef(null);
 
   const isEditing = Boolean(id);
+
+  // Bulk upload is for add mode only; close it when switching to edit.
+  useEffect(() => {
+    if (!isEditing) return;
+    setBulkMode(false);
+    setBulkItems((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
+      return [];
+    });
+  }, [isEditing]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -107,6 +128,7 @@ const ImageForm = () => {
   };
 
   const handleFileChange = (e) => {
+    if (bulkMode) return;
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
@@ -121,9 +143,86 @@ const ImageForm = () => {
     }
   };
 
-  const uploadFile = async (file) => {
-    setUploading(true);
-    setUploadProgress(0);
+  const handleBulkFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Clean up any existing previews created with URL.createObjectURL
+    setBulkItems((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
+      return [];
+    });
+
+    const nextItems = files.map((file, index) => {
+      const previewUrl = URL.createObjectURL(file);
+      const titleFromFilename = file.name.replace(/\.[^/.]+$/, "");
+      return {
+        id: `${file.name}-${file.size}-${index}`,
+        file,
+        previewUrl,
+        title: titleFromFilename,
+        tags: [],
+        pendingTagNames: [],
+      };
+    });
+
+    setBulkItems(nextItems);
+  };
+
+  const removeBulkItem = (itemId) => {
+    setBulkItems((prev) => {
+      const item = prev.find((x) => x.id === itemId);
+      if (item?.previewUrl && item.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+      return prev.filter((x) => x.id !== itemId);
+    });
+  };
+
+  const updateBulkItem = (itemId, patch) => {
+    setBulkItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item))
+    );
+  };
+
+  const setBulkItemTags = (itemId, nextTagIds) => {
+    updateBulkItem(itemId, { tags: nextTagIds });
+  };
+
+  const removeBulkTag = (itemId, tagToRemove) => {
+    setBulkItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, tags: item.tags.filter((t) => t !== tagToRemove) } : item
+      )
+    );
+  };
+
+  const removeBulkPendingTag = (itemId, tagNameToRemove) => {
+    setBulkItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, pendingTagNames: item.pendingTagNames.filter((n) => n !== tagNameToRemove) }
+          : item
+      )
+    );
+  };
+
+  const uploadFile = async (file) =>
+    uploadFileWithProgress(file, { manageUploading: true });
+
+  const uploadFileWithProgress = async (
+    file,
+    { manageUploading = true, onProgress } = {}
+  ) => {
+    if (manageUploading) {
+      setUploading(true);
+      setUploadProgress(0);
+    }
+
     try {
       const { url, key } = await presign(file.name, file.type, "Images");
       await new Promise((resolve, reject) => {
@@ -137,14 +236,16 @@ const ImageForm = () => {
         xhr.onerror = () => reject(new Error("Upload error"));
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+            const progress = Math.round((e.loaded / e.total) * 100);
+            if (manageUploading) setUploadProgress(progress);
+            onProgress?.(progress);
           }
         };
         xhr.send(file);
       });
       return `/api/uploads/url?key=${encodeURIComponent(key)}`;
     } finally {
-      setUploading(false);
+      if (manageUploading) setUploading(false);
     }
   };
 
@@ -212,8 +313,106 @@ const ImageForm = () => {
     }));
   };
 
+  const handleBulkSubmit = async () => {
+    setLoading(true);
+    setError("");
+    setBulkUploading(true);
+    setBulkUploadProgress(0);
+    setBulkUploadIndex(0);
+
+    try {
+      if (!bulkItems || bulkItems.length === 0) {
+        setError("يرجى اختيار صور أولاً");
+        return;
+      }
+
+      // Auto-create author/type if the user typed a name but didn't click إضافة.
+      let authorId = formData.authorId;
+      if (!authorId && newAuthorName.trim()) {
+        try {
+          const author = await addAuthor(newAuthorName.trim());
+          authorId = author.id;
+        } catch (err) {
+          console.error("Failed to auto-create author:", err);
+        }
+      }
+
+      let typeId = formData.typeId;
+      if (!typeId && newTypeName.trim()) {
+        try {
+          const type = await addType(newTypeName.trim());
+          typeId = type.id;
+        } catch (err) {
+          console.error("Failed to auto-create type:", err);
+        }
+      }
+
+      const allPendingNames = Array.from(
+        new Set(
+          bulkItems
+            .flatMap((item) => item.pendingTagNames || [])
+            .map((name) => name.trim())
+            .filter(Boolean)
+        )
+      );
+
+      // Create any pending tags used inside the batch.
+      for (const tagName of allPendingNames) {
+        try {
+          await createTag({ name: tagName });
+        } catch (err) {
+          // If the tag already exists or creation fails, server-side connectOrCreate will handle it.
+          console.error(`Failed to create pending tag "${tagName}":`, err);
+        }
+      }
+
+      // Sequential upload + create to keep S3 + progress manageable.
+      for (let i = 0; i < bulkItems.length; i++) {
+        const item = bulkItems[i];
+        setBulkUploadIndex(i + 1);
+        setBulkUploadProgress(0);
+
+        const imageUrl = await uploadFileWithProgress(item.file, {
+          manageUploading: false,
+          onProgress: (p) => setBulkUploadProgress(p),
+        });
+
+        const selectedTagNames = (item.tags || [])
+          .map((tagId) => tags.find((t) => t.id === tagId)?.name)
+          .filter(Boolean);
+
+        const imageData = {
+          title: (item.title || "").trim(),
+          imageUrl,
+          authorId: authorId || null,
+          typeId: typeId || null,
+          ai: formData.ai,
+          published: formData.published,
+          tags: [...selectedTagNames, ...(item.pendingTagNames || [])],
+        };
+
+        if (!imageData.title) {
+          throw new Error(`عنوان الصورة غير صالح في رقم ${i + 1}`);
+        }
+
+        await createImage(imageData);
+      }
+
+      navigate("/image-library");
+    } catch (err) {
+      setError(err?.message || "حدث خطأ أثناء رفع الصور دفعة واحدة");
+    } finally {
+      setLoading(false);
+      setBulkUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (bulkMode) {
+      await handleBulkSubmit();
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -326,8 +525,49 @@ const ImageForm = () => {
           </div>
         )}
 
+        {/* Bulk upload toggle (add mode only) */}
+        {!isEditing && (
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
+            <div className="text-right">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                رفع دفعة متعددة
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-300">
+                اختر عدة صور دفعة واحدة واختر المواضيع لكل عنوان
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={bulkMode}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setBulkMode(next);
+                setImageFile(null);
+                setImagePreview(null);
+                setBulkItems((prev) => {
+                  prev.forEach((item) => {
+                    if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+                      URL.revokeObjectURL(item.previewUrl);
+                    }
+                  });
+                  return [];
+                });
+                setFormData((prev) => ({
+                  ...prev,
+                  title: "",
+                  imageUrl: "",
+                  tags: [],
+                  pendingTagNames: [],
+                }));
+              }}
+              className="h-5 w-5 text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-slate-500 rounded"
+            />
+          </div>
+        )}
+
         {/* Title */}
-        <div>
+        {!bulkMode && (
+          <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             العنوان *
           </label>
@@ -342,47 +582,117 @@ const ImageForm = () => {
             placeholder="أدخل عنوان الصورة"
             dir="rtl"
           />
-        </div>
+          </div>
+        )}
 
         {/* Image Upload */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            الصورة *
+            {bulkMode ? "الصور *" : "الصورة *"}
           </label>
-          <div className="space-y-3">
-            {imagePreview && (
-              <div className="relative w-48 h-48 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-slate-600 shadow-md">
-                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                    if (!isEditing) {
-                      setFormData((prev) => ({ ...prev, imageUrl: "" }));
-                    }
-                  }}
-                  className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition-all"
-            />
-            {uploading && (
-              <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            )}
-          </div>
+          {!bulkMode ? (
+            <div className="space-y-3">
+              {imagePreview && (
+                <div className="relative w-48 h-48 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-slate-600 shadow-md">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageFile(null);
+                      setImagePreview(null);
+                      if (!isEditing) {
+                        setFormData((prev) => ({ ...prev, imageUrl: "" }));
+                      }
+                    }}
+                    className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition-all"
+              />
+              {uploading && (
+                <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {bulkUploading && (
+                <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${bulkUploadProgress}%` }}
+                  />
+                </div>
+              )}
+
+              {bulkUploading && (
+                <div className="text-xs text-gray-600 dark:text-gray-300">
+                  جاري رفع الصورة {bulkUploadIndex} من {bulkItems.length}
+                </div>
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleBulkFileChange}
+                disabled={bulkUploading}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition-all"
+              />
+
+              {bulkItems.length > 0 && (
+                <div className="space-y-4">
+                  {bulkItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex gap-4 p-4 rounded-xl border border-gray-200 dark:border-slate-600 bg-white/60 dark:bg-slate-800/30"
+                    >
+                      {item.previewUrl && (
+                        <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600 shadow-sm flex-shrink-0">
+                          <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeBulkItem(item.id)}
+                            disabled={bulkUploading}
+                            className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full p-1 hover:bg-red-600 transition-colors disabled:opacity-50"
+                            title="إزالة"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex-1 space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          العنوان
+                        </label>
+                        <input
+                          type="text"
+                          value={item.title}
+                          onChange={(e) => updateBulkItem(item.id, { title: e.target.value })}
+                          disabled={bulkUploading}
+                          className="block w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                          placeholder="عنوان الصورة"
+                          dir="rtl"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Author - Custom Dropdown */}
@@ -562,65 +872,143 @@ const ImageForm = () => {
         </div>
 
         {/* Tags */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            المواضيع
-          </label>
-          <TagMultiSelect
-            allTags={tags}
-            selectedIds={formData.tags}
-            onChange={(next) =>
-              setFormData((prev) => ({ ...prev, tags: next }))
-            }
-            placeholder="اختيار المواضيع"
-            pendingTagNames={formData.pendingTagNames}
-            onAddPendingTag={(tagName) => {
-              setFormData((prev) => ({
-                ...prev,
-                pendingTagNames: [...prev.pendingTagNames, tagName],
-              }));
-            }}
-          />
+        {bulkMode ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              المواضيع (لكل صورة)
+            </label>
 
-          {/* Selected Tags */}
-          {(formData.tags.length > 0 || formData.pendingTagNames.length > 0) && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {formData.tags.map((tagId) => {
-                const t = tags.find((x) => x.id === tagId);
-                return (
-                  <span
-                    key={tagId}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
+            {bulkItems.length === 0 ? (
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                اختر صوراً من الأعلى لعرض العناوين ثم اختر المواضيع لكل عنوان.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bulkItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-4 rounded-xl border border-gray-200 dark:border-slate-600 bg-white/60 dark:bg-slate-800/30"
                   >
-                    {t?.name || tagId}
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                      {item.title}
+                    </div>
+
+                    <TagMultiSelect
+                      allTags={tags}
+                      selectedIds={item.tags}
+                      onChange={(next) => setBulkItemTags(item.id, next)}
+                      placeholder="اختيار المواضيع"
+                      pendingTagNames={item.pendingTagNames}
+                      onAddPendingTag={(tagName) => {
+                        updateBulkItem(item.id, {
+                          pendingTagNames: [...item.pendingTagNames, tagName],
+                        });
+                      }}
+                    />
+
+                    {(item.tags.length > 0 || item.pendingTagNames.length > 0) && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {item.tags.map((tagId) => {
+                          const t = tags.find((x) => x.id === tagId);
+                          return (
+                            <span
+                              key={tagId}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
+                            >
+                              {t?.name || tagId}
+                              <button
+                                type="button"
+                                onClick={() => removeBulkTag(item.id, tagId)}
+                                className="mr-2 text-blue-600 dark:text-blue-400 hover:text-blue-800"
+                                disabled={bulkUploading}
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                        {item.pendingTagNames.map((tagName) => (
+                          <span
+                            key={`pending-${tagName}`}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
+                          >
+                            {tagName} (جديد)
+                            <button
+                              type="button"
+                              onClick={() => removeBulkPendingTag(item.id, tagName)}
+                              className="mr-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-800"
+                              disabled={bulkUploading}
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              المواضيع
+            </label>
+            <TagMultiSelect
+              allTags={tags}
+              selectedIds={formData.tags}
+              onChange={(next) => setFormData((prev) => ({ ...prev, tags: next }))}
+              placeholder="اختيار المواضيع"
+              pendingTagNames={formData.pendingTagNames}
+              onAddPendingTag={(tagName) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  pendingTagNames: [...prev.pendingTagNames, tagName],
+                }));
+              }}
+            />
+
+            {/* Selected Tags */}
+            {(formData.tags.length > 0 || formData.pendingTagNames.length > 0) && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {formData.tags.map((tagId) => {
+                  const t = tags.find((x) => x.id === tagId);
+                  return (
+                    <span
+                      key={tagId}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
+                    >
+                      {t?.name || tagId}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tagId)}
+                        className="mr-2 text-blue-600 dark:text-blue-400 hover:text-blue-800"
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </span>
+                  );
+                })}
+                {formData.pendingTagNames.map((tagName) => (
+                  <span
+                    key={`pending-${tagName}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
+                  >
+                    {tagName} (جديد)
                     <button
                       type="button"
-                      onClick={() => removeTag(tagId)}
-                      className="mr-2 text-blue-600 dark:text-blue-400 hover:text-blue-800"
+                      onClick={() => removePendingTag(tagName)}
+                      className="mr-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-800"
                     >
                       <XMarkIcon className="h-4 w-4" />
                     </button>
                   </span>
-                );
-              })}
-              {formData.pendingTagNames.map((tagName) => (
-                <span
-                  key={`pending-${tagName}`}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
-                >
-                  {tagName} (جديد)
-                  <button
-                    type="button"
-                    onClick={() => removePendingTag(tagName)}
-                    className="mr-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-800"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Toggles: AI and Published */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -664,7 +1052,7 @@ const ImageForm = () => {
           </button>
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading || uploading || bulkUploading}
             className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
           >
             {loading ? "جاري الحفظ..." : isEditing ? "تحديث" : "حفظ"}
